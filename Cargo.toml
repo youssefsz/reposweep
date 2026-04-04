@@ -1,7 +1,28 @@
-[package]
-name = "shatter-rust"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "crates/shatter-core",
+    "crates/shatter-tui",
+    "crates/shatter-cli",
+]
+resolver = "3"
 
-[dependencies]
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+
+[workspace.dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
+crossterm = "0.29.0"
+directories = "6.0.0"
+miette = { version = "7.6.0", features = ["fancy"] }
 ratatui = "0.30.0"
+rayon = "1.11.0"
+serde = { version = "1.0.228", features = ["derive"] }
+tempfile = "3.23.0"
+thiserror = "2.0.18"
+toml = "0.9.7"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
+trash = "5.2.5"
+walkdir = "2.5.0"

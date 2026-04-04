@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive_name: shatter-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
+            binary_name: shatter
+            package_shell: bash
+          - runner: macos-13
+            target: x86_64-apple-darwin
+            archive_name: shatter-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
+            binary_name: shatter
+            package_shell: bash
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            archive_name: shatter-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz
+            binary_name: shatter
+            package_shell: bash
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive_name: shatter-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip
+            binary_name: shatter.exe
+            package_shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build binary
+        run: cargo build --release --locked --package shatter --target ${{ matrix.target }}
+      - name: Package Unix archive
+        if: matrix.package_shell == 'bash'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BINARY="${{ matrix.binary_name }}"
+          TARGET="${{ matrix.target }}"
+          STAGING_DIR="release-package"
+          ARCHIVE_NAME="${{ matrix.archive_name }}"
+
+          rm -rf "$STAGING_DIR"
+          mkdir -p "$STAGING_DIR"
+          cp "target/${TARGET}/release/${BINARY}" "$STAGING_DIR/${BINARY}"
+          cp README.md "$STAGING_DIR/README.md"
+          cp LICENSE "$STAGING_DIR/LICENSE"
+
+          tar -czf "$ARCHIVE_NAME" -C "$STAGING_DIR" .
+          echo "archive=$ARCHIVE_NAME" >> "$GITHUB_OUTPUT"
+        id: package
+      - name: Package Windows archive
+        if: matrix.package_shell == 'pwsh'
+        shell: pwsh
+        run: |
+          $Binary = "${{ matrix.binary_name }}"
+          $Target = "${{ matrix.target }}"
+          $StagingDir = "release-package"
+          $ArchiveName = "${{ matrix.archive_name }}"
+
+          if (Test-Path $StagingDir) {
+            Remove-Item -Recurse -Force $StagingDir
+          }
+          New-Item -ItemType Directory -Path $StagingDir | Out-Null
+          Copy-Item "target/$Target/release/$Binary" "$StagingDir/$Binary"
+          Copy-Item "README.md" "$StagingDir/README.md"
+          Copy-Item "LICENSE" "$StagingDir/LICENSE"
+
+          Compress-Archive -Path "$StagingDir/*" -DestinationPath $ArchiveName
+          "archive=$ArchiveName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        id: package_windows
+      - name: Upload release archive
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.archive || steps.package_windows.outputs.archive }}
