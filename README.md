@@ -199,15 +199,3 @@ The generated config lets you disable ecosystems, add protected paths, define cu
 ## License
 
 RepoSweep is available under the [MIT License](./LICENSE).
-
-## Release Assets
-
-The install script expects GitHub Release archives named like:
-
-- `reposweep-v0.1.2-x86_64-unknown-linux-gnu.tar.gz`
-- `reposweep-v0.1.2-aarch64-unknown-linux-gnu.tar.gz`
-- `reposweep-v0.1.2-x86_64-apple-darwin.tar.gz`
-- `reposweep-v0.1.2-aarch64-apple-darwin.tar.gz`
-- `reposweep-v0.1.2-x86_64-pc-windows-msvc.zip`
-
-Those archives are produced automatically by the release workflow when you push a `v*` tag.
