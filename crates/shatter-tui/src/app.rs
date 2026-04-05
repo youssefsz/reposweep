@@ -85,6 +85,19 @@ fn handle_key(
     code: KeyCode,
     modifiers: KeyModifiers,
 ) -> shatter_core::Result<()> {
+    if model.summary.is_some() {
+        return handle_summary_key(model, app_state, code);
+    }
+
+    if model
+        .results
+        .as_ref()
+        .and_then(|results| results.pending_delete.as_ref())
+        .is_some()
+    {
+        return handle_confirm_key(model, code);
+    }
+
     match model.screen {
         Screen::Home | Screen::Error => handle_home_key(model, app_state, code, modifiers),
         Screen::Scanning => {
@@ -105,8 +118,6 @@ fn handle_key(
             Ok(())
         }
         Screen::Results => handle_results_key(model, app_state, code),
-        Screen::ConfirmDelete => handle_confirm_key(model, code),
-        Screen::Summary => handle_summary_key(model, app_state, code),
     }
 }
 
@@ -117,28 +128,41 @@ fn handle_home_key(
     modifiers: KeyModifiers,
 ) -> shatter_core::Result<()> {
     match code {
-        KeyCode::Char('q') => model.should_quit = true,
-        KeyCode::Esc => model.clear_error(),
-        KeyCode::Char('b') => model.switch_home_mode(HomeMode::Browser),
-        KeyCode::Char('p') => model.switch_home_mode(HomeMode::PathEntry),
+        KeyCode::Esc => {
+            if model.last_error.is_some() {
+                model.clear_error();
+            } else {
+                model.should_quit = true;
+            }
+        }
         KeyCode::Up => model.move_home_selection(-1),
         KeyCode::Down => model.move_home_selection(1),
+        KeyCode::Tab => {
+            if model.home.mode == HomeMode::PathEntry {
+                model.switch_home_mode(HomeMode::Browser);
+            } else {
+                model.switch_home_mode(HomeMode::PathEntry);
+            }
+        }
         KeyCode::Enter => match model.home.mode {
             HomeMode::PathEntry => start_scan_from_input(model, app_state)?,
             HomeMode::Browser => model.enter_browser(),
         },
-        KeyCode::Char('s') => match model.home.mode {
-            HomeMode::PathEntry => start_scan_from_input(model, app_state)?,
-            HomeMode::Browser => {
-                model.home.input = model.home.browser_path.display().to_string();
-                start_scan_from_input(model, app_state)?;
-            }
-        },
+        KeyCode::Char('s') if model.home.mode == HomeMode::Browser => {
+            model.home.input = model.home.browser_path.display().to_string();
+            start_scan_from_input(model, app_state)?;
+        }
+        KeyCode::Char('q') if model.home.mode == HomeMode::Browser => {
+            model.should_quit = true;
+        }
         KeyCode::Backspace if model.home.mode == HomeMode::PathEntry => {
             model.home.input.pop();
         }
         KeyCode::Char(character) if model.home.mode == HomeMode::PathEntry => {
-            if modifiers.contains(KeyModifiers::CONTROL) {
+            if modifiers.contains(KeyModifiers::CONTROL) && character == 'c' {
+                model.should_quit = true;
+                return Ok(());
+            } else if modifiers.contains(KeyModifiers::CONTROL) {
                 return Ok(());
             }
             model.home.input.push(character);
@@ -166,19 +190,15 @@ fn handle_results_key(
         KeyCode::Up => results.move_selection(-1),
         KeyCode::Down => results.move_selection(1),
         KeyCode::Char(' ') => results.toggle_selected(),
-        KeyCode::Char('a') => results.select_all_visible(),
+        KeyCode::Char('a') => results.toggle_all_visible(),
         KeyCode::Char('n') => results.clear_selection(),
         KeyCode::Char('f') => results.cycle_filter(),
         KeyCode::Char('s') => results.cycle_sort(),
         KeyCode::Enter | KeyCode::Delete | KeyCode::Char('d') | KeyCode::Char('x') => {
-            if results.begin_delete(shatter_core::DeleteStrategy::Trash) {
-                model.screen = Screen::ConfirmDelete;
-            }
+            results.begin_delete(shatter_core::DeleteStrategy::Trash);
         }
         KeyCode::Char('D') => {
-            if results.begin_delete(shatter_core::DeleteStrategy::Permanent) {
-                model.screen = Screen::ConfirmDelete;
-            }
+            results.begin_delete(shatter_core::DeleteStrategy::Permanent);
         }
         KeyCode::Char('r') => start_scan_from_input(model, app_state)?,
         _ => {}
@@ -197,7 +217,6 @@ fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Resu
             if let Some(results) = &mut model.results {
                 results.pending_delete = None;
             }
-            model.screen = Screen::Results;
         }
         KeyCode::Char('q') => model.should_quit = true,
         KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
@@ -224,7 +243,10 @@ fn handle_summary_key(
 ) -> shatter_core::Result<()> {
     match code {
         KeyCode::Char('q') => model.should_quit = true,
-        KeyCode::Esc | KeyCode::Char('h') => {
+        KeyCode::Enter | KeyCode::Esc => {
+            model.summary = None;
+        }
+        KeyCode::Char('h') => {
             model.summary = None;
             model.screen = Screen::Home;
         }

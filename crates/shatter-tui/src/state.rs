@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
@@ -26,8 +26,6 @@ pub enum Screen {
     Home,
     Scanning,
     Results,
-    ConfirmDelete,
-    Summary,
     Error,
 }
 
@@ -244,10 +242,13 @@ impl AppModel {
 
     pub fn finish_delete(&mut self, result: DeleteResult, strategy: DeleteStrategy) {
         self.summary = Some(SummaryState { result, strategy });
-        self.screen = Screen::Summary;
         if let Some(results) = &mut self.results {
+            if let Some(summary) = &self.summary {
+                results.apply_delete_result(&summary.result);
+            }
             results.pending_delete = None;
         }
+        self.screen = Screen::Results;
     }
 }
 
@@ -329,9 +330,18 @@ impl ResultsState {
         }
     }
 
-    pub fn select_all_visible(&mut self) {
-        for index in self.visible_indices() {
-            self.checked.insert(index);
+    pub fn toggle_all_visible(&mut self) {
+        let visible = self.visible_indices();
+        let all_visible_checked = visible.iter().all(|index| self.checked.contains(index));
+
+        if all_visible_checked {
+            for index in visible {
+                self.checked.remove(&index);
+            }
+        } else {
+            for index in visible {
+                self.checked.insert(index);
+            }
         }
     }
 
@@ -411,6 +421,22 @@ impl ResultsState {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    pub fn apply_delete_result(&mut self, result: &DeleteResult) {
+        if result.deleted.is_empty() {
+            return;
+        }
+
+        let deleted_paths: BTreeSet<_> = result.deleted.iter().cloned().collect();
+        self.report
+            .items
+            .retain(|item| !deleted_paths.contains(&item.path));
+        self.checked.clear();
+        self.report.totals = recalculate_totals(&self.report.items);
+
+        let visible_len = self.visible_indices().len();
+        self.selected_visible = self.selected_visible.min(visible_len.saturating_sub(1));
     }
 }
 
@@ -494,6 +520,22 @@ pub fn footer_hint(results: &ResultsState) -> String {
     )
 }
 
+fn recalculate_totals(items: &[ScanItem]) -> shatter_core::ScanTotals {
+    let mut totals = shatter_core::ScanTotals {
+        items: items.len(),
+        bytes: 0,
+        by_kind: BTreeMap::new(),
+    };
+
+    for item in items {
+        let bytes = item.bytes.unwrap_or(0);
+        totals.bytes += bytes;
+        *totals.by_kind.entry(item.kind).or_insert(0) += bytes;
+    }
+
+    totals
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -556,6 +598,57 @@ mod tests {
         results.filter = FilterMode::Dependencies;
         let visible = results.visible_indices();
         assert_eq!(visible, vec![1]);
+    }
+
+    #[test]
+    fn toggle_all_visible_selects_then_clears_visible_items() {
+        let mut results = sample_results();
+
+        results.toggle_all_visible();
+        assert_eq!(
+            results.checked.iter().copied().collect::<Vec<_>>(),
+            vec![0, 1]
+        );
+
+        results.toggle_all_visible();
+        assert!(results.checked.is_empty());
+    }
+
+    #[test]
+    fn toggle_all_visible_only_affects_current_filter() {
+        let mut results = sample_results();
+        results.checked.insert(0);
+        results.filter = FilterMode::Dependencies;
+
+        results.toggle_all_visible();
+        assert_eq!(
+            results.checked.iter().copied().collect::<Vec<_>>(),
+            vec![0, 1]
+        );
+
+        results.toggle_all_visible();
+        assert_eq!(results.checked.iter().copied().collect::<Vec<_>>(), vec![0]);
+    }
+
+    #[test]
+    fn apply_delete_result_removes_deleted_items_and_updates_totals() {
+        let mut results = sample_results();
+        results.checked.insert(0);
+        results.checked.insert(1);
+
+        let result = DeleteResult {
+            deleted: vec![PathBuf::from("/tmp/b")],
+            failed: vec![],
+            reclaimed_bytes: 1000,
+        };
+
+        results.apply_delete_result(&result);
+
+        assert_eq!(results.report.items.len(), 1);
+        assert_eq!(results.report.items[0].path, PathBuf::from("/tmp/a"));
+        assert_eq!(results.report.totals.items, 1);
+        assert_eq!(results.report.totals.bytes, 100);
+        assert!(results.checked.is_empty());
     }
 
     #[test]

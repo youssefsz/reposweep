@@ -13,107 +13,164 @@ pub fn render(frame: &mut Frame<'_>, model: &mut AppModel) {
     match model.screen {
         Screen::Home | Screen::Error => render_home(frame, model),
         Screen::Scanning => render_scanning(frame, model),
-        Screen::Results | Screen::ConfirmDelete | Screen::Summary => render_results(frame, model),
+        Screen::Results => render_results(frame, model),
     }
 
-    if matches!(model.screen, Screen::ConfirmDelete) {
+    if model
+        .results
+        .as_ref()
+        .and_then(|results| results.pending_delete.as_ref())
+        .is_some()
+    {
         render_confirm(frame, model);
     }
 
-    if matches!(model.screen, Screen::Summary) {
+    if model.summary.is_some() {
         render_summary(frame, model);
     }
 }
 
 fn render_home(frame: &mut Frame<'_>, model: &mut AppModel) {
+    let shell = render_app_shell(frame, "Shatter");
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(7),
+            Constraint::Length(4),
             Constraint::Length(3),
+            Constraint::Length(5),
             Constraint::Min(10),
             Constraint::Length(3),
         ])
-        .split(frame.area());
+        .margin(1)
+        .split(shell);
 
-    render_brand_header(
+    render_header(
         frame,
         chunks[0],
+        "Shatter",
         "Clean project caches, builds, and dependencies without leaving the terminal",
-        false,
+        match model.home.mode {
+            HomeMode::PathEntry => "HOME",
+            HomeMode::Browser => "BROWSER",
+        },
     );
 
-    let mode_label = match model.home.mode {
-        HomeMode::PathEntry => "Path Entry",
-        HomeMode::Browser => "Browse",
-    };
-    let scan_path_title = format!("Scan Path  ·  {mode_label}");
-    let input = Paragraph::new(model.home.input.clone()).block(
-        panel(&scan_path_title).border_style(if model.home.mode == HomeMode::PathEntry {
-            focus_style(true)
+    let mode_tabs = Paragraph::new(Line::from(vec![
+        mode_tab("Path Entry", model.home.mode == HomeMode::PathEntry),
+        Span::raw("  "),
+        mode_tab("Browse", model.home.mode == HomeMode::Browser),
+        Span::raw("  "),
+        Span::styled(
+            "Tab",
+            Style::default().fg(MUTED).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" switches mode"),
+    ]))
+    .block(panel("Workspace Mode"));
+    frame.render_widget(mode_tabs, chunks[1]);
+
+    let mut input_text = model.home.input.clone();
+    if model.home.mode == HomeMode::PathEntry {
+        if model.tick % 8 < 4 {
+            input_text.push('█');
         } else {
-            chrome()
-        }),
-    );
-    frame.render_widget(input, chunks[1]);
+            input_text.push(' ');
+        }
+    }
+
+    let input = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Target Path", Style::default().fg(MUTED)),
+            Span::raw("  "),
+            Span::styled(
+                if model.home.mode == HomeMode::PathEntry {
+                    "typing"
+                } else {
+                    "synced from browser"
+                },
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            input_text,
+            if model.home.mode == HomeMode::PathEntry {
+                focus_style(true)
+            } else {
+                Style::default().fg(TEXT)
+            },
+        )),
+    ])
+    .block(panel("Scan Target"))
+    .wrap(Wrap { trim: false });
+    frame.render_widget(input, chunks[2]);
 
     match model.home.mode {
         HomeMode::PathEntry => {
             let body = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(64), Constraint::Percentage(36)])
-                .split(chunks[2]);
+                .constraints([Constraint::Percentage(62), Constraint::Percentage(38)])
+                .spacing(1)
+                .split(chunks[3]);
 
             let intro = Paragraph::new(vec![
-                Line::from(Span::styled(
-                    "Default flow",
-                    Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-                )),
+                section_heading("Ready To Scan"),
                 Line::from(""),
-                Line::from("1. Type the folder path you want to scan."),
-                Line::from("2. Press Enter to start the scan."),
-                Line::from("3. Review results and delete from the results screen."),
+                Line::from(vec![
+                    Span::styled("Enter", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+                    Span::raw(" starts a scan for the path above."),
+                ]),
+                Line::from(vec![
+                    Span::styled("Tab", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+                    Span::raw(" switches to the directory browser."),
+                ]),
+                Line::from(vec![
+                    Span::styled("Esc", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+                    Span::raw(" exits the app."),
+                ]),
                 Line::from(""),
-                Line::from("Press b if you prefer browsing folders instead of typing."),
+                muted_line("Shatter scans common cache, build, and dependency directories so you can review them before deleting anything."),
             ])
-            .block(panel("Path Mode"))
+            .block(panel("Overview"))
             .wrap(Wrap { trim: true });
             frame.render_widget(intro, body[0]);
 
-            let recent_lines: Vec<Line<'_>> = if model.home.recent_paths.is_empty() {
-                vec![muted_line("No recent scans yet.")]
+            let mut lines = vec![section_heading("Recent Scans"), Line::from("")];
+
+            if model.home.recent_paths.is_empty() {
+                lines.push(muted_line("No recent scans yet."));
             } else {
-                model
-                    .home
-                    .recent_paths
-                    .iter()
-                    .take(8)
-                    .map(|path| {
-                        Line::from(vec![
-                            Span::styled("• ", Style::default().fg(PURPLE)),
-                            Span::styled(path.display().to_string(), Style::default().fg(TEXT)),
-                        ])
-                    })
-                    .collect()
-            };
-            let recent = Paragraph::new(recent_lines)
-                .block(panel("Recent Scans"))
+                lines.extend(model.home.recent_paths.iter().take(8).map(|path| {
+                    Line::from(vec![
+                        Span::styled("• ", Style::default().fg(ACCENT)),
+                        Span::styled(path.display().to_string(), Style::default().fg(TEXT)),
+                    ])
+                }));
+            }
+
+            let recent = Paragraph::new(lines)
+                .block(panel("Recent"))
                 .wrap(Wrap { trim: true });
             frame.render_widget(recent, body[1]);
         }
         HomeMode::Browser => {
+            let body = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(64), Constraint::Percentage(36)])
+                .spacing(1)
+                .split(chunks[3]);
+
             let browser_items: Vec<ListItem<'_>> = model
                 .home
                 .browser_entries
                 .iter()
                 .map(|entry| ListItem::new(entry.label.clone()))
                 .collect();
-            let browser_title = format!("Browser  {}", model.home.browser_path.display());
             let browser = List::new(browser_items)
-                .block(panel(&browser_title).border_style(focus_style(true)))
+                .block(panel("Directory Browser"))
                 .highlight_style(Style::default().bg(SURFACE_HI).fg(TEXT))
-                .highlight_symbol("> ");
-            let browser_viewport = chunks[2].height.saturating_sub(2) as usize;
+                .highlight_symbol("› ");
+            let browser_viewport = body[0].height.saturating_sub(2) as usize;
             sync_list_offset(
                 &mut model.home.browser_offset,
                 model.home.browser_selected,
@@ -123,86 +180,90 @@ fn render_home(frame: &mut Frame<'_>, model: &mut AppModel) {
             let mut browser_state = ListState::default()
                 .with_offset(model.home.browser_offset)
                 .with_selected(Some(model.home.browser_selected));
-            frame.render_stateful_widget(browser, chunks[2], &mut browser_state);
+            frame.render_stateful_widget(browser, body[0], &mut browser_state);
+
+            let sidebar = Paragraph::new(vec![
+                section_heading("Current Directory"),
+                Line::from(Span::styled(
+                    model.home.browser_path.display().to_string(),
+                    Style::default().fg(TEXT),
+                )),
+                Line::from(""),
+                muted_line("Enter opens the selected folder."),
+                muted_line("s scans the current folder immediately."),
+                muted_line("Tab returns to direct path entry."),
+            ])
+            .block(panel("Context"))
+            .wrap(Wrap { trim: true });
+            frame.render_widget(sidebar, body[1]);
         }
     }
 
     let footer = match model.home.mode {
         HomeMode::PathEntry => status_bar(vec![
-            Span::styled(
-                "Path mode",
-                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-            ),
-            Span::raw("  "),
             keycap("Enter"),
-            Span::raw(" scan  "),
-            keycap("b"),
-            Span::raw(" browse  "),
-            keycap("q"),
+            Span::raw(" scan   "),
+            keycap("Tab"),
+            Span::raw(" browse   "),
+            keycap("Esc"),
             Span::raw(" quit"),
         ]),
         HomeMode::Browser => status_bar(vec![
-            Span::styled(
-                "Browse mode",
-                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-            ),
-            Span::raw("  arrows move  "),
+            keycap("Arrows"),
+            Span::raw(" move   "),
             keycap("Enter"),
-            Span::raw(" open  "),
+            Span::raw(" open   "),
             keycap("s"),
-            Span::raw(" scan  "),
-            keycap("p"),
-            Span::raw(" path mode"),
+            Span::raw(" scan   "),
+            keycap("Tab"),
+            Span::raw(" type path"),
         ]),
     };
-    frame.render_widget(footer, chunks[3]);
+    frame.render_widget(footer, chunks[4]);
 
     if let Some(error) = &model.last_error {
-        let area = centered_rect(70, 25, frame.area());
+        let area = centered_box(frame.area(), 58, 7);
         frame.render_widget(Clear, area);
         let popup = Paragraph::new(error.as_str())
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: true })
-            .block(panel("Error"));
+            .block(dialog("Error"));
         frame.render_widget(popup, area);
     }
 }
 
 fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
+    let shell = render_app_shell(frame, "Shatter");
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(7),
-            Constraint::Length(8),
+            Constraint::Length(4),
+            Constraint::Length(6),
             Constraint::Min(8),
             Constraint::Length(3),
         ])
-        .split(frame.area());
+        .margin(1)
+        .split(shell);
 
     let spinner = scanner_spinner(model.tick);
-    render_brand_header(
+    render_header(
         frame,
         chunks[0],
-        &format!(
-            "{spinner}  scanning {}",
-            model
-                .scan
-                .root
-                .as_ref()
-                .map(|path| path.display().to_string())
-                .unwrap_or_else(|| "…".into())
-        ),
-        false,
+        "Active Scan",
+        &model
+            .scan
+            .root
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "Preparing scan target".into()),
+        "SCANNING",
     );
 
     let scanner = Paragraph::new(vec![
-        Line::from(Span::styled(
-            "SCANNER FEED",
-            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-        )),
+        section_heading("Scanner Feed"),
         Line::from(""),
         Line::from(vec![
-            Span::styled("CURRENT  ", Style::default().fg(MUTED)),
+            Span::styled("Current  ", Style::default().fg(MUTED)),
             Span::styled(
                 model
                     .scan
@@ -213,36 +274,43 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
                 Style::default().fg(TEXT),
             ),
         ]),
+        Line::from(""),
         Line::from(vec![
-            Span::styled("STATUS   ", Style::default().fg(MUTED)),
-            Span::styled(scan_meter(model.tick), Style::default().fg(PURPLE)),
+            Span::styled("Progress ", Style::default().fg(MUTED)),
+            Span::styled(scan_meter(model.tick), Style::default().fg(ACCENT)),
+            Span::raw("  "),
+            Span::styled(
+                spinner,
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
-            Span::styled("FOUND    ", Style::default().fg(MUTED)),
+            Span::styled("Matches  ", Style::default().fg(MUTED)),
             Span::styled(
                 format!("{} candidate(s)", model.scan.matched_items),
                 Style::default().fg(ACCENT),
             ),
         ]),
     ])
-    .block(panel("Scanner"))
+    .block(panel("Progress"))
     .wrap(Wrap { trim: false });
     frame.render_widget(scanner, chunks[1]);
 
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(65), Constraint::Percentage(35)])
+        .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+        .spacing(1)
         .split(chunks[2]);
 
     let warning_lines: Vec<ListItem<'_>> = if model.scan.warnings.is_empty() {
-        vec![ListItem::new("No warnings so far")]
+        vec![ListItem::new(muted_line("No warnings so far."))]
     } else {
         model
             .scan
             .warnings
             .iter()
             .rev()
-            .take(8)
+            .take(body[0].height.saturating_sub(2) as usize)
             .map(|warning| ListItem::new(warning.clone()))
             .collect()
     };
@@ -250,24 +318,21 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
     frame.render_widget(warnings, body[0]);
 
     let stats = Paragraph::new(vec![
+        section_heading("Live Stats"),
+        Line::from(""),
         metric_line("Directories", model.scan.scanned_dirs.to_string()),
         metric_line("Matches", model.scan.matched_items.to_string()),
         metric_line("Warnings", model.scan.warnings.len().to_string()),
         Line::from(""),
-        muted_line("Results open automatically when scanning finishes."),
+        muted_line("Results open automatically when the scan completes."),
     ])
-    .block(panel("Live Stats"))
+    .block(panel("Session"))
     .wrap(Wrap { trim: true });
     frame.render_widget(stats, body[1]);
 
     let footer = status_bar(vec![
-        Span::styled(
-            "Scanner",
-            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("  "),
         keycap("c"),
-        Span::raw(" cancel  "),
+        Span::raw(" cancel   "),
         keycap("q"),
         Span::raw(" quit"),
     ]);
@@ -275,67 +340,73 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
 }
 
 fn render_results(frame: &mut Frame<'_>, model: &mut AppModel) {
-    if matches!(model.screen, Screen::Summary) {
-        render_summary(frame, model);
-        return;
-    }
-
     let Some(results) = &model.results else {
-        let empty = Paragraph::new("No results yet.").block(panel("Results"));
-        frame.render_widget(empty, frame.area());
+        let shell = render_app_shell(frame, "Shatter");
+        frame.render_widget(
+            Paragraph::new("No results yet.")
+                .alignment(Alignment::Center)
+                .block(panel("Results")),
+            shell,
+        );
         return;
     };
 
+    let shell = render_app_shell(frame, "Shatter");
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(5),
-            Constraint::Min(10),
             Constraint::Length(4),
+            Constraint::Length(4),
+            Constraint::Min(10),
+            Constraint::Length(5),
+            Constraint::Length(3),
         ])
-        .split(frame.area());
+        .margin(1)
+        .split(shell);
 
-    render_brand_header(
+    render_header(
         frame,
         chunks[0],
-        &format!(
-            "{} items • {} reclaimable • {} warnings",
-            results.report.totals.items,
-            format_bytes(results.report.totals.bytes),
-            results.report.warnings.len()
-        ),
-        true,
+        "Scan Results",
+        "Review candidates before moving them to trash or deleting permanently",
+        "RESULTS",
     );
 
-    let body = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(72), Constraint::Percentage(28)])
-        .split(chunks[1]);
-
-    render_results_table(frame, body[0], results);
-
-    let sidebar = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(10), Constraint::Length(10)])
-        .split(body[1]);
-
-    render_details(frame, sidebar[0], results);
-    render_actions(frame, sidebar[1], results);
+    let summary = Paragraph::new(vec![
+        Line::from(vec![
+            metric_span("Items", results.report.totals.items.to_string()),
+            Span::raw("   "),
+            metric_span("Reclaimable", format_bytes(results.report.totals.bytes)),
+            Span::raw("   "),
+            metric_span("Warnings", results.report.warnings.len().to_string()),
+        ]),
+        Line::from(vec![
+            metric_span("Filter", filter_label(results.filter).to_string()),
+            Span::raw("   "),
+            metric_span("Sort", sort_label(results.sort).to_string()),
+            Span::raw("   "),
+            metric_span("Selected", results.selected_count().to_string()),
+        ]),
+    ])
+    .block(panel("Summary"))
+    .wrap(Wrap { trim: true });
+    frame.render_widget(summary, chunks[1]);
+    render_results_table(frame, chunks[2], results);
+    render_details(frame, chunks[3], results);
 
     let footer = status_bar(vec![
-        Span::styled(
-            "Results",
-            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("  "),
         keycap("Space"),
-        Span::raw(" toggle  "),
+        Span::raw(" toggle   "),
+        keycap("f"),
+        Span::raw(" filter   "),
+        keycap("s"),
+        Span::raw(" sort   "),
         keycap("Enter"),
-        Span::raw(" trash  "),
+        Span::raw(" trash   "),
         keycap("Shift+d"),
         Span::raw(" delete"),
     ]);
-    frame.render_widget(footer, chunks[2]);
+    frame.render_widget(footer, chunks[4]);
 }
 
 fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &ResultsState) {
@@ -380,6 +451,7 @@ fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &ResultsStat
             .style(Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
     )
     .block(panel("Candidates"))
+    .column_spacing(1)
     .row_highlight_style(Style::default().bg(SURFACE_HI).fg(TEXT));
 
     let mut state = TableState::default();
@@ -394,60 +466,61 @@ fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &ResultsStat
 fn render_details(frame: &mut Frame<'_>, area: Rect, results: &ResultsState) {
     let details = if let Some(item) = results.selected_item() {
         vec![
+            section_heading("Selected"),
+            Line::from(""),
+            Line::from(Span::styled(
+                item.path.display().to_string(),
+                Style::default().fg(TEXT),
+            )),
+            Line::from(""),
             Line::from(vec![
-                Span::styled("Path: ", Style::default().fg(PURPLE)),
-                Span::raw(item.path.display().to_string()),
-            ]),
-            Line::from(vec![
-                Span::styled("Rule: ", Style::default().fg(PURPLE)),
-                Span::raw(item.rule_name.clone()),
-            ]),
-            Line::from(vec![
-                Span::styled("Kind: ", Style::default().fg(PURPLE)),
+                Span::styled("rule ", Style::default().fg(MUTED)),
+                Span::styled(item.rule_name.clone(), Style::default().fg(ACCENT)),
+                Span::raw("   "),
+                Span::styled("kind ", Style::default().fg(MUTED)),
                 Span::raw(item.kind.to_string()),
-            ]),
-            Line::from(vec![
-                Span::styled("Ecosystem: ", Style::default().fg(PURPLE)),
+                Span::raw("   "),
+                Span::styled("eco ", Style::default().fg(MUTED)),
                 Span::raw(item.ecosystem.clone()),
-            ]),
-            Line::from(vec![
-                Span::styled("Size: ", Style::default().fg(PURPLE)),
+                Span::raw("   "),
+                Span::styled("size ", Style::default().fg(MUTED)),
                 Span::raw(item.bytes.map(format_bytes).unwrap_or_else(|| "n/a".into())),
             ]),
             Line::from(vec![
-                Span::styled("Project Root: ", Style::default().fg(PURPLE)),
-                Span::raw(
-                    item.project_root
-                        .as_ref()
-                        .map(|path| path.display().to_string())
-                        .unwrap_or_else(|| "unknown".into()),
+                Span::styled("marked ", Style::default().fg(MUTED)),
+                Span::styled(
+                    results.selected_count().to_string(),
+                    Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
                 ),
+                Span::raw("   "),
+                Span::styled("reclaim ", Style::default().fg(MUTED)),
+                Span::styled(
+                    format_bytes(results.checked_bytes()),
+                    Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+                ),
+                Span::raw("   "),
+                Span::styled("filter ", Style::default().fg(MUTED)),
+                Span::raw(filter_label(results.filter)),
+                Span::raw("   "),
+                Span::styled("sort ", Style::default().fg(MUTED)),
+                Span::raw(sort_label(results.sort)),
             ]),
+            Line::from(""),
+            shortcut_line(&[("Enter", "trash"), ("Shift+d", "delete"), ("h", "home")]),
         ]
     } else {
-        vec![Line::from("No item selected")]
+        vec![
+            section_heading("Selected"),
+            muted_line("No item selected."),
+            Line::from(""),
+            muted_line(&crate::state::footer_hint(results)),
+        ]
     };
 
     let paragraph = Paragraph::new(details)
-        .block(panel("Selected Item"))
+        .block(panel("Selection"))
         .wrap(Wrap { trim: true });
     frame.render_widget(paragraph, area);
-}
-
-fn render_actions(frame: &mut Frame<'_>, area: Rect, results: &ResultsState) {
-    let actions = controls_block(
-        "Actions",
-        vec![
-            metric_line("Selected", results.selected_count().to_string()),
-            metric_line("Reclaim", format_bytes(results.checked_bytes())),
-            metric_line("Filter", filter_label(results.filter).to_string()),
-            metric_line("Sort", sort_label(results.sort).to_string()),
-            shortcut_line(&[("Enter", "trash"), ("Delete", "trash")]),
-            shortcut_line(&[("x", "trash"), ("Shift+d", "delete")]),
-            muted_line(&crate::state::footer_hint(results)),
-        ],
-    );
-    frame.render_widget(actions, area);
 }
 
 fn render_confirm(frame: &mut Frame<'_>, model: &mut AppModel) {
@@ -458,7 +531,7 @@ fn render_confirm(frame: &mut Frame<'_>, model: &mut AppModel) {
         return;
     };
 
-    let area = centered_rect(60, 30, frame.area());
+    let area = centered_box(frame.area(), 56, 10);
     frame.render_widget(Clear, area);
     let popup = Paragraph::new(vec![
         Line::from(format!(
@@ -471,11 +544,14 @@ fn render_confirm(frame: &mut Frame<'_>, model: &mut AppModel) {
             pending.item_indices.len(),
             format_bytes(pending.total_bytes)
         )),
+        Line::from(""),
+        muted_line("This confirmation stays on top of the current results list."),
+        Line::from(""),
         shortcut_line(&[("Enter", "confirm"), ("y", "confirm")]),
         shortcut_line(&[("Esc", "cancel"), ("n", "cancel")]),
     ])
     .alignment(Alignment::Center)
-    .block(panel("Confirm Delete"))
+    .block(dialog("Confirm delete"))
     .wrap(Wrap { trim: true });
     frame.render_widget(popup, area);
 }
@@ -485,7 +561,7 @@ fn render_summary(frame: &mut Frame<'_>, model: &mut AppModel) {
         return;
     };
 
-    let area = centered_rect(70, 40, frame.area());
+    let area = centered_box(frame.area(), 72, 15);
     frame.render_widget(Clear, area);
     let failures = if summary.result.failed.is_empty() {
         "No failures".into()
@@ -499,14 +575,41 @@ fn render_summary(frame: &mut Frame<'_>, model: &mut AppModel) {
             .collect::<Vec<_>>()
             .join("\n")
     };
-    let popup = Paragraph::new(format!(
-        "{}\nRecovered {}\n\nFailures:\n{}\n\nr rescan this folder\nh return home\nq quit",
-        summary.title(),
-        format_bytes(summary.result.reclaimed_bytes),
-        failures
-    ))
+    let popup = Paragraph::new(vec![
+        Line::from(Span::styled(
+            summary.title(),
+            Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Recovered ", Style::default().fg(MUTED)),
+            Span::styled(
+                format_bytes(summary.result.reclaimed_bytes),
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Deleted ", Style::default().fg(MUTED)),
+            Span::styled(
+                summary.result.deleted.len().to_string(),
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("   "),
+            Span::styled("Failed ", Style::default().fg(MUTED)),
+            Span::styled(
+                summary.result.failed.len().to_string(),
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled("Failures:", Style::default().fg(MUTED))),
+        Line::from(failures),
+        Line::from(""),
+        shortcut_line(&[("Enter", "close"), ("Esc", "close"), ("h", "home")]),
+        shortcut_line(&[("r", "rescan"), ("q", "quit")]),
+    ])
     .alignment(Alignment::Left)
-    .block(panel("Cleanup Summary"))
+    .block(dialog("Cleanup summary"))
     .wrap(Wrap { trim: true });
     frame.render_widget(popup, area);
 }
@@ -519,24 +622,19 @@ fn focus_style(focused: bool) -> Style {
     }
 }
 
-fn centered_rect(width_percent: u16, height_percent: u16, area: Rect) -> Rect {
-    let vertical = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - height_percent) / 2),
-            Constraint::Percentage(height_percent),
-            Constraint::Percentage((100 - height_percent) / 2),
-        ])
-        .split(area);
+fn centered_box(area: Rect, desired_width: u16, desired_height: u16) -> Rect {
+    let max_width = area.width.saturating_sub(6).max(1);
+    let max_height = area.height.saturating_sub(4).max(1);
 
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - width_percent) / 2),
-            Constraint::Percentage(width_percent),
-            Constraint::Percentage((100 - width_percent) / 2),
-        ])
-        .split(vertical[1])[1]
+    let width = desired_width.min(max_width);
+    let height = desired_height.min(max_height);
+
+    Rect::new(
+        area.x + area.width.saturating_sub(width) / 2,
+        area.y + area.height.saturating_sub(height) / 2,
+        width,
+        height,
+    )
 }
 
 fn filter_label(mode: FilterMode) -> &'static str {
@@ -554,71 +652,102 @@ fn sort_label(mode: SortMode) -> &'static str {
     }
 }
 
-fn controls_block<'a>(title: &'a str, lines: Vec<Line<'a>>) -> Paragraph<'a> {
-    Paragraph::new(lines)
-        .block(panel(title))
-        .wrap(Wrap { trim: true })
+fn dialog<'a>(title: &'a str) -> Block<'a> {
+    Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().bg(PANEL_BG))
+        .border_style(chrome())
+        .title(Span::styled(
+            format!(" {title} "),
+            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+        ))
+}
+
+fn render_app_shell(frame: &mut Frame<'_>, title: &str) -> Rect {
+    frame.render_widget(
+        Block::default().style(Style::default().bg(BACKGROUND)),
+        frame.area(),
+    );
+
+    let shell = centered_app_rect(frame.area());
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().bg(SHELL_BG))
+        .border_style(chrome())
+        .title(Span::styled(
+            format!(" {title} "),
+            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+        ));
+    let inner = block.inner(shell);
+    frame.render_widget(Clear, shell);
+    frame.render_widget(block, shell);
+    inner
+}
+
+fn render_header(frame: &mut Frame<'_>, area: Rect, title: &str, subtitle: &str, badge: &str) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(72), Constraint::Percentage(28)])
+        .split(area);
+
+    let left = Paragraph::new(vec![
+        Line::from(Span::styled(
+            title,
+            Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(subtitle, Style::default().fg(MUTED))),
+    ])
+    .wrap(Wrap { trim: true });
+    frame.render_widget(left, chunks[0]);
+
+    let right = Paragraph::new(vec![
+        Line::from(vec![badge_span(badge)]),
+        Line::from(Span::styled(
+            "developer cleanup suite",
+            Style::default().fg(MUTED),
+        )),
+    ])
+    .alignment(Alignment::Right)
+    .wrap(Wrap { trim: true });
+    frame.render_widget(right, chunks[1]);
 }
 
 fn panel<'a>(title: &'a str) -> Block<'a> {
     Block::default()
         .borders(Borders::ALL)
+        .style(Style::default().bg(PANEL_BG))
         .border_style(chrome())
         .title(Span::styled(
             format!(" {title} "),
-            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
         ))
 }
 
-fn render_brand_header(frame: &mut Frame<'_>, area: Rect, subtitle: &str, compact: bool) {
-    let lines = if compact || area.width < 72 {
-        vec![
-            Line::from(vec![
-                Span::styled(
-                    "SHATTER",
-                    Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw("  "),
-                Span::styled("v0.1.0", Style::default().fg(MUTED)),
-            ]),
-            Line::from(Span::styled(subtitle, Style::default().fg(TEXT))),
-        ]
+fn centered_app_rect(area: Rect) -> Rect {
+    let width = if area.width > 124 {
+        120
     } else {
-        vec![
-            Line::from(Span::styled(
-                "  ____  _           _   _             ",
-                Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
-            )),
-            Line::from(Span::styled(
-                " / ___|| |__   __ _| |_| |_ ___ _ __  ",
-                Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
-            )),
-            Line::from(Span::styled(
-                " \\___ \\| '_ \\ / _` | __| __/ _ \\ '__| ",
-                Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
-            )),
-            Line::from(Span::styled(
-                "  ___) | | | | (_| | |_| ||  __/ |    ",
-                Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
-            )),
-            Line::from(Span::styled(
-                " |____/|_| |_|\\__,_|\\__|\\__\\___|_|    ",
-                Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
-            )),
-            Line::from(vec![
-                Span::styled("  developer cleanup engine", Style::default().fg(ACCENT)),
-                Span::raw("  "),
-                Span::styled("v0.1.0", Style::default().fg(MUTED)),
-                Span::raw("  "),
-                Span::styled(subtitle, Style::default().fg(TEXT)),
-            ]),
-        ]
+        area.width.saturating_sub(2).max(1)
+    };
+    let height = if area.height > 42 {
+        38
+    } else {
+        area.height.saturating_sub(1).max(1)
     };
 
-    let header = Paragraph::new(lines)
-        .block(panel("Shatter"))
-        .wrap(Wrap { trim: false });
-    frame.render_widget(header, area);
+    Rect::new(
+        area.x + area.width.saturating_sub(width) / 2,
+        area.y + area.height.saturating_sub(height) / 2,
+        width,
+        height,
+    )
+}
+
+fn section_heading(title: &str) -> Line<'static> {
+    Line::from(Span::styled(
+        title.to_string(),
+        Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+    ))
 }
 
 fn keycap(label: &str) -> Span<'static> {
@@ -628,6 +757,51 @@ fn keycap(label: &str) -> Span<'static> {
             .fg(TEXT)
             .bg(SURFACE_HI)
             .add_modifier(Modifier::BOLD),
+    )
+}
+
+fn badge_span(label: &str) -> Span<'static> {
+    Span::styled(
+        format!(" {label} "),
+        Style::default()
+            .fg(BACKGROUND)
+            .bg(ACCENT)
+            .add_modifier(Modifier::BOLD),
+    )
+}
+
+fn mode_tab(label: &str, active: bool) -> Span<'static> {
+    let style = if active {
+        Style::default()
+            .fg(BACKGROUND)
+            .bg(ACCENT)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(TEXT)
+            .bg(SURFACE_HI)
+            .add_modifier(Modifier::BOLD)
+    };
+    Span::styled(format!(" {label} "), style)
+}
+
+fn metric_line(label: &str, value: String) -> Line<'static> {
+    Line::from(vec![
+        Span::styled(
+            format!("{label}: "),
+            Style::default().fg(MUTED).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            value,
+            Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
+        ),
+    ])
+}
+
+fn metric_span(label: &str, value: String) -> Span<'static> {
+    Span::styled(
+        format!("{label}: {value}"),
+        Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
     )
 }
 
@@ -644,19 +818,6 @@ fn shortcut_line<'a>(items: &[(&'a str, &'a str)]) -> Line<'a> {
     Line::from(spans)
 }
 
-fn metric_line(label: &str, value: String) -> Line<'static> {
-    Line::from(vec![
-        Span::styled(
-            format!("{label}: "),
-            Style::default().fg(MUTED).add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            value,
-            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-        ),
-    ])
-}
-
 fn muted_line(message: &str) -> Line<'static> {
     Line::from(Span::styled(
         message.to_string(),
@@ -665,18 +826,23 @@ fn muted_line(message: &str) -> Line<'static> {
 }
 
 fn status_bar<'a>(spans: Vec<Span<'a>>) -> Paragraph<'a> {
-    Paragraph::new(Line::from(spans)).block(panel("Status"))
+    Paragraph::new(Line::from(spans))
+        .block(panel("Controls"))
+        .style(Style::default().fg(TEXT))
 }
 
 fn chrome() -> Style {
     Style::default().fg(PURPLE)
 }
 
-const SURFACE_HI: Color = Color::Rgb(50, 37, 68);
-const PURPLE: Color = Color::Rgb(199, 120, 221);
-const ACCENT: Color = Color::Rgb(199, 120, 221);
-const TEXT: Color = Color::Rgb(235, 235, 245);
-const MUTED: Color = Color::Rgb(140, 146, 172);
+const BACKGROUND: Color = Color::Rgb(7, 10, 18);
+const SHELL_BG: Color = Color::Rgb(13, 17, 29);
+const PANEL_BG: Color = Color::Rgb(22, 27, 38);
+const SURFACE_HI: Color = Color::Rgb(45, 57, 78);
+const PURPLE: Color = Color::Rgb(94, 108, 136);
+const ACCENT: Color = Color::Rgb(126, 189, 255);
+const TEXT: Color = Color::Rgb(234, 238, 246);
+const MUTED: Color = Color::Rgb(150, 160, 181);
 
 fn scanner_spinner(tick: u64) -> &'static str {
     match tick % 4 {
