@@ -1,6 +1,18 @@
-# RepoSweep
+<div align="center">
+  <img src="./logo.png" alt="RepoSweep" width="100%" />
+  <p><strong>Rust-native cleanup for developer repositories.</strong></p>
+  <p>
+    <a href="https://github.com/youssefsz/reposweep/releases"><img src="https://img.shields.io/github/v/release/youssefsz/reposweep?display_name=tag&sort=semver" alt="Latest release" /></a>
+    <a href="https://github.com/youssefsz/reposweep/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/youssefsz/reposweep/release.yml?label=release" alt="Release workflow" /></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" /></a>
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Platforms" />
+    <img src="https://img.shields.io/badge/built%20with-Rust-f74c00" alt="Built with Rust" />
+  </p>
+</div>
 
-`RepoSweep` is a Rust-native cleanup tool for developer repositories. It scans a chosen path for dependency folders, build outputs, and disposable caches, then lets you review and remove them through a scriptable CLI or an interactive terminal UI.
+`RepoSweep` scans a chosen path for dependency folders, build outputs, and disposable caches, then lets you review and remove them through a scriptable CLI or an interactive terminal UI.
+
+Created by [Youssef Dhibi](https://dhibi.tn).
 
 This repository is inspired by the original Python project [TheLime1/shatter](https://github.com/TheLime1/shatter), but it is not a direct port. It is a separate Rust implementation with its own core engine, CLI workflow, and TUI.
 
@@ -144,6 +156,14 @@ The generated config lets you disable ecosystems, add protected paths, define cu
 - `crates/reposweep-core`: scanning, rules, config, deletion services
 - `crates/reposweep-cli`: command-line entrypoint and scripting workflow
 - `crates/reposweep-tui`: interactive terminal interface built on Ratatui
+
+## Author
+
+[Youssef Dhibi](https://dhibi.tn) created RepoSweep.
+
+## License
+
+RepoSweep is available under the [MIT License](./LICENSE).
 
 ## Release Assets
 
