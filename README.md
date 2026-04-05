@@ -52,11 +52,11 @@ powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/you
 Install a specific version:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash -s -- --version v0.1.2
+curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash -s -- --version v0.1.3
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "$env:REPOSWEEP_VERSION='v0.1.2'; irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "$env:REPOSWEEP_VERSION='v0.1.3'; irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
 ```
 
 Build from source:
@@ -130,7 +130,7 @@ reposweep upgrade
 Upgrade to a specific release:
 
 ```bash
-reposweep upgrade --version v0.1.2
+reposweep upgrade --version v0.1.3
 ```
 
 Uninstall the binary from the current machine:
