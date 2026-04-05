@@ -25,6 +25,10 @@ pub fn render(frame: &mut Frame<'_>, model: &mut AppModel) {
         render_confirm(frame, model);
     }
 
+    if model.delete.in_progress {
+        render_delete_progress(frame, model);
+    }
+
     if model.summary.is_some() {
         render_summary(frame, model);
     }
@@ -238,14 +242,13 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(4),
-            Constraint::Length(6),
+            Constraint::Length(8),
             Constraint::Min(8),
             Constraint::Length(3),
         ])
         .margin(1)
         .split(shell);
 
-    let spinner = scanner_spinner(model.tick);
     render_header(
         frame,
         chunks[0],
@@ -263,6 +266,37 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
         section_heading("Scanner Feed"),
         Line::from(""),
         Line::from(vec![
+            Span::styled("Loading  ", Style::default().fg(MUTED)),
+            Span::styled(
+                indeterminate_bar(model.tick, 28),
+                Style::default().fg(ACCENT),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Matches  ", Style::default().fg(MUTED)),
+            Span::styled(
+                format!("{} candidate(s)", model.scan.matched_items),
+                Style::default().fg(ACCENT),
+            ),
+        ]),
+        if model.scan.stalled_ticks > 10 {
+            Line::from(vec![
+                Span::styled("Status   ", Style::default().fg(MUTED)),
+                Span::styled(
+                    "finalizing results...",
+                    Style::default().fg(ACCENT).add_modifier(Modifier::ITALIC),
+                ),
+            ])
+        } else {
+            Line::from(vec![
+                Span::styled("Status   ", Style::default().fg(MUTED)),
+                Span::styled(
+                    "actively scanning",
+                    Style::default().fg(TEXT).add_modifier(Modifier::ITALIC),
+                ),
+            ])
+        },
+        Line::from(vec![
             Span::styled("Current  ", Style::default().fg(MUTED)),
             Span::styled(
                 model
@@ -272,23 +306,6 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
                     .map(|path| path.display().to_string())
                     .unwrap_or_else(|| "waiting for first directory...".into()),
                 Style::default().fg(TEXT),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Progress ", Style::default().fg(MUTED)),
-            Span::styled(scan_meter(model.tick), Style::default().fg(ACCENT)),
-            Span::raw("  "),
-            Span::styled(
-                spinner,
-                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("Matches  ", Style::default().fg(MUTED)),
-            Span::styled(
-                format!("{} candidate(s)", model.scan.matched_items),
-                Style::default().fg(ACCENT),
             ),
         ]),
     ])
@@ -614,6 +631,39 @@ fn render_summary(frame: &mut Frame<'_>, model: &mut AppModel) {
     frame.render_widget(popup, area);
 }
 
+fn render_delete_progress(frame: &mut Frame<'_>, model: &mut AppModel) {
+    let area = centered_box(frame.area(), 52, 8);
+    frame.render_widget(Clear, area);
+
+    let message = format!(
+        "{} {} item(s)...",
+        if model.delete.strategy == shatter_core::DeleteStrategy::Trash {
+            "Moving to trash"
+        } else {
+            "Deleting"
+        },
+        model.delete.item_count
+    );
+
+    let popup = Paragraph::new(vec![
+        Line::from(Span::styled(
+            indeterminate_bar(model.tick, 20),
+            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            message,
+            Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        muted_line("Please wait while Shatter finishes the cleanup."),
+    ])
+    .alignment(Alignment::Center)
+    .block(dialog("Working"))
+    .wrap(Wrap { trim: true });
+    frame.render_widget(popup, area);
+}
+
 fn focus_style(focused: bool) -> Style {
     if focused {
         Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)
@@ -844,23 +894,20 @@ const ACCENT: Color = Color::Rgb(126, 189, 255);
 const TEXT: Color = Color::Rgb(234, 238, 246);
 const MUTED: Color = Color::Rgb(150, 160, 181);
 
-fn scanner_spinner(tick: u64) -> &'static str {
-    match tick % 4 {
-        0 => "[|]",
-        1 => "[/]",
-        2 => "[-]",
-        _ => "[\\]",
-    }
-}
+fn indeterminate_bar(tick: u64, width: usize) -> String {
+    let width = width.max(12);
+    let segment = (width / 4).max(4).min(width.saturating_sub(2));
+    let travel = width.saturating_sub(segment);
+    let cycle = travel.saturating_mul(2).max(1);
+    let step = (tick as usize) % cycle;
+    let offset = if step <= travel { step } else { cycle - step };
 
-fn scan_meter(tick: u64) -> String {
-    const WIDTH: usize = 18;
-    let filled = (tick as usize % (WIDTH + 1)).min(WIDTH);
-    let mut meter = String::from("[");
-    meter.push_str(&"#".repeat(filled));
-    meter.push_str(&".".repeat(WIDTH - filled));
-    meter.push(']');
-    meter
+    let mut chars = vec![' '; width];
+    for slot in chars.iter_mut().skip(offset).take(segment) {
+        *slot = '=';
+    }
+
+    format!("[{}]", chars.into_iter().collect::<String>())
 }
 
 fn sync_list_offset(offset: &mut usize, selected: usize, len: usize, viewport: usize) {

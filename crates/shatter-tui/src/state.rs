@@ -16,6 +16,7 @@ pub struct AppModel {
     pub screen: Screen,
     pub home: HomeState,
     pub scan: ScanState,
+    pub delete: DeleteState,
     pub results: Option<ResultsState>,
     pub summary: Option<SummaryState>,
     pub last_error: Option<String>,
@@ -77,10 +78,18 @@ pub struct ScanState {
     pub current_path: Option<PathBuf>,
     pub scanned_dirs: usize,
     pub matched_items: usize,
+    pub stalled_ticks: u64,
     pub warnings: Vec<String>,
     pub event_rx: Option<Receiver<ScanEvent>>,
     pub result_rx: Option<Receiver<CoreResult<ScanReport>>>,
     pub cancel: Option<CancellationToken>,
+}
+
+pub struct DeleteState {
+    pub in_progress: bool,
+    pub item_count: usize,
+    pub strategy: DeleteStrategy,
+    pub result_rx: Option<Receiver<DeleteResult>>,
 }
 
 pub struct ResultsState {
@@ -133,6 +142,7 @@ impl AppModel {
                 mode: HomeMode::PathEntry,
             },
             scan: ScanState::default(),
+            delete: DeleteState::default(),
             results: None,
             summary: None,
             last_error: None,
@@ -220,6 +230,7 @@ impl AppModel {
     ) {
         self.screen = Screen::Scanning;
         self.summary = None;
+        self.delete = DeleteState::default();
         self.results = None;
         self.last_error = None;
         self.scan = ScanState {
@@ -227,6 +238,7 @@ impl AppModel {
             current_path: None,
             scanned_dirs: 0,
             matched_items: 0,
+            stalled_ticks: 0,
             warnings: vec![],
             event_rx: Some(event_rx),
             result_rx: Some(result_rx),
@@ -242,6 +254,7 @@ impl AppModel {
 
     pub fn finish_delete(&mut self, result: DeleteResult, strategy: DeleteStrategy) {
         self.summary = Some(SummaryState { result, strategy });
+        self.delete = DeleteState::default();
         if let Some(results) = &mut self.results {
             if let Some(summary) = &self.summary {
                 results.apply_delete_result(&summary.result);
@@ -259,10 +272,22 @@ impl Default for ScanState {
             current_path: None,
             scanned_dirs: 0,
             matched_items: 0,
+            stalled_ticks: 0,
             warnings: vec![],
             event_rx: None,
             result_rx: None,
             cancel: None,
+        }
+    }
+}
+
+impl Default for DeleteState {
+    fn default() -> Self {
+        Self {
+            in_progress: false,
+            item_count: 0,
+            strategy: DeleteStrategy::Trash,
+            result_rx: None,
         }
     }
 }
@@ -452,6 +477,7 @@ impl SummaryState {
 }
 
 pub fn handle_scan_event(model: &mut AppModel, event: ScanEvent) {
+    model.scan.stalled_ticks = 0;
     match event {
         ScanEvent::Started { .. } => {}
         ScanEvent::EnteredPath { path } => {

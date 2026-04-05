@@ -89,6 +89,10 @@ fn handle_key(
         return handle_summary_key(model, app_state, code);
     }
 
+    if model.delete.in_progress {
+        return handle_delete_progress_key(model, code);
+    }
+
     if model
         .results
         .as_ref()
@@ -226,13 +230,18 @@ fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Resu
                 .map(|pending| pending.strategy)
                 .unwrap_or(shatter_core::DeleteStrategy::Trash);
             let items = results.delete_items();
-            let result =
-                DeleteService::new(FsDeletionBackend).delete(DeleteRequest { items, strategy });
-            model.finish_delete(result, strategy);
+            spawn_delete(model, items, strategy);
         }
         _ => {}
     }
 
+    Ok(())
+}
+
+fn handle_delete_progress_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Result<()> {
+    if matches!(code, KeyCode::Char('q')) {
+        model.should_quit = true;
+    }
     Ok(())
 }
 
@@ -315,7 +324,34 @@ fn spawn_scan(model: &mut AppModel, root: PathBuf) {
     model.begin_scan(root, event_rx, result_rx, cancel);
 }
 
+fn spawn_delete(
+    model: &mut AppModel,
+    items: Vec<shatter_core::ScanItem>,
+    strategy: shatter_core::DeleteStrategy,
+) {
+    let item_count = items.len();
+    let (result_tx, result_rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let result =
+            DeleteService::new(FsDeletionBackend).delete(DeleteRequest { items, strategy });
+        let _ = result_tx.send(result);
+    });
+
+    model.delete.in_progress = true;
+    model.delete.item_count = item_count;
+    model.delete.strategy = strategy;
+    model.delete.result_rx = Some(result_rx);
+    if let Some(results) = &mut model.results {
+        results.pending_delete = None;
+    }
+}
+
 fn drain_background_messages(model: &mut AppModel) {
+    if matches!(model.screen, Screen::Scanning) {
+        model.scan.stalled_ticks = model.scan.stalled_ticks.saturating_add(1);
+    }
+
     loop {
         let event = {
             let Some(receiver) = model.scan.event_rx.as_ref() else {
@@ -329,20 +365,32 @@ fn drain_background_messages(model: &mut AppModel) {
         }
     }
 
-    let Some(receiver) = model.scan.result_rx.take() else {
-        return;
-    };
-    match receiver.try_recv() {
-        Ok(Ok(report)) => model.finish_scan(report),
-        Ok(Err(error)) => {
-            model.set_error(error.to_string());
-            model.scan = crate::state::ScanState::default();
+    if let Some(receiver) = model.scan.result_rx.take() {
+        match receiver.try_recv() {
+            Ok(Ok(report)) => model.finish_scan(report),
+            Ok(Err(error)) => {
+                model.set_error(error.to_string());
+                model.scan = crate::state::ScanState::default();
+            }
+            Err(mpsc::TryRecvError::Empty) => {
+                model.scan.result_rx = Some(receiver);
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                warn!("scan result channel disconnected");
+            }
         }
-        Err(mpsc::TryRecvError::Empty) => {
-            model.scan.result_rx = Some(receiver);
-        }
-        Err(mpsc::TryRecvError::Disconnected) => {
-            warn!("scan result channel disconnected");
+    }
+
+    if let Some(receiver) = model.delete.result_rx.take() {
+        match receiver.try_recv() {
+            Ok(result) => model.finish_delete(result, model.delete.strategy),
+            Err(mpsc::TryRecvError::Empty) => {
+                model.delete.result_rx = Some(receiver);
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                warn!("delete result channel disconnected");
+                model.delete = crate::state::DeleteState::default();
+            }
         }
     }
 }
