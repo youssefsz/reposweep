@@ -487,7 +487,7 @@ fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &mut Results
     .column_spacing(1)
     .row_highlight_style(Style::default().bg(SURFACE_HI).fg(TEXT));
 
-    let table_viewport = area.height.saturating_sub(4) as usize;
+    let table_viewport = table_row_viewport_height(area);
     sync_list_offset(
         &mut results.scroll_offset,
         results.selected_visible,
@@ -906,6 +906,10 @@ fn status_bar<'a>(spans: Vec<Span<'a>>) -> Paragraph<'a> {
         .style(Style::default().fg(TEXT))
 }
 
+fn table_row_viewport_height(area: Rect) -> usize {
+    area.height.saturating_sub(3) as usize
+}
+
 fn chrome() -> Style {
     Style::default().fg(PURPLE)
 }
@@ -963,7 +967,7 @@ mod tests {
     use crate::state::{AppModel, ResultsState, Screen};
     use crate::storage::AppState;
 
-    use super::{render, render_results_table};
+    use super::{render, render_results_table, table_row_viewport_height};
 
     #[test]
     fn render_results_smoke_test() {
@@ -1020,12 +1024,47 @@ mod tests {
         terminal
             .draw(|frame| render_results_table(frame, frame.area(), &mut results))
             .expect("draw bottom");
-        assert_eq!(results.scroll_offset, 8);
+        assert_eq!(results.scroll_offset, 7);
 
         results.selected_visible = 10;
         terminal
             .draw(|frame| render_results_table(frame, frame.area(), &mut results))
             .expect("draw up");
-        assert_eq!(results.scroll_offset, 8);
+        assert_eq!(results.scroll_offset, 7);
+    }
+
+    #[test]
+    fn results_table_does_not_scroll_before_last_visible_row() {
+        let backend = TestBackend::new(80, 8);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut results = ResultsState::new(ScanReport {
+            items: (0..12)
+                .map(|index| ScanItem {
+                    path: PathBuf::from(format!("/tmp/item-{index}")),
+                    kind: ArtifactKind::Build,
+                    ecosystem: "rust".into(),
+                    rule_name: "target".into(),
+                    bytes: Some(1024),
+                    last_modified: None,
+                    project_root: None,
+                    notes: vec![],
+                })
+                .collect(),
+            totals: ScanTotals::default(),
+            warnings: vec![],
+            duration: Duration::from_secs(1),
+            cancelled: false,
+        });
+
+        results.selected_visible = 4;
+        terminal
+            .draw(|frame| render_results_table(frame, frame.area(), &mut results))
+            .expect("draw last visible");
+
+        assert_eq!(
+            table_row_viewport_height(ratatui::layout::Rect::new(0, 0, 80, 8)),
+            5
+        );
+        assert_eq!(results.scroll_offset, 0);
     }
 }
