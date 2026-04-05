@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPO="${REPOSWEEP_REPO:-youssefsz/reposweep}"
 BINARY_NAME="reposweep"
-INSTALL_DIR="${REPOSWEEP_INSTALL_DIR:-$HOME/.local/bin}"
+INSTALL_DIR="${REPOSWEEP_INSTALL_DIR:-}"
 REQUESTED_VERSION="${REPOSWEEP_VERSION:-latest}"
 USE_SOURCE_INSTALL=0
 
@@ -25,7 +25,7 @@ Options:
 Environment overrides:
   REPOSWEEP_REPO        GitHub repo slug, for example youssefsz/reposweep
   REPOSWEEP_VERSION     Release tag or "latest"
-  REPOSWEEP_INSTALL_DIR Destination directory, defaults to ~/.local/bin
+  REPOSWEEP_INSTALL_DIR Destination directory, defaults to a PATH directory such as /usr/local/bin
 EOF
 }
 
@@ -60,6 +60,65 @@ need_cmd() {
     echo "Missing required command: $1" >&2
     exit 1
   fi
+}
+
+path_contains_dir() {
+  local candidate="$1"
+  local path_entry
+
+  IFS=':' read -r -a path_entries <<<"$PATH"
+  for path_entry in "${path_entries[@]}"; do
+    if [[ "$path_entry" == "$candidate" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+default_install_dir() {
+  local os candidate
+  os="$(uname -s)"
+
+  if [[ "$os" == "Darwin" ]]; then
+    for candidate in "/opt/homebrew/bin" "/usr/local/bin" "$HOME/.cargo/bin" "$HOME/.local/bin"; do
+      if path_contains_dir "$candidate"; then
+        printf '%s' "$candidate"
+        return
+      fi
+    done
+  else
+    for candidate in "/usr/local/bin" "$HOME/.cargo/bin" "$HOME/.local/bin"; do
+      if path_contains_dir "$candidate"; then
+        printf '%s' "$candidate"
+        return
+      fi
+    done
+  fi
+
+  printf '%s' "$HOME/.local/bin"
+}
+
+install_binary() {
+  local source="$1"
+  local destination="$INSTALL_DIR/$BINARY_NAME"
+  local parent_dir
+
+  if [[ -d "$INSTALL_DIR" ]]; then
+    parent_dir="$INSTALL_DIR"
+  else
+    parent_dir="$(dirname "$INSTALL_DIR")"
+  fi
+
+  if [[ -w "$INSTALL_DIR" || ( ! -e "$INSTALL_DIR" && -w "$parent_dir" ) ]]; then
+    mkdir -p "$INSTALL_DIR"
+    install -m 755 "$source" "$destination"
+    return
+  fi
+
+  need_cmd sudo
+  echo "Need sudo to install to $INSTALL_DIR"
+  sudo mkdir -p "$INSTALL_DIR"
+  sudo install -m 755 "$source" "$destination"
 }
 
 detect_target() {
@@ -117,9 +176,7 @@ install_from_source() {
 
   local cargo_bin
   cargo_bin="${REPOSWEEP_CARGO_ROOT:-$HOME/.cargo}/bin/$BINARY_NAME"
-  mkdir -p "$INSTALL_DIR"
-  cp "$cargo_bin" "$INSTALL_DIR/$BINARY_NAME"
-  chmod +x "$INSTALL_DIR/$BINARY_NAME"
+  install_binary "$cargo_bin"
 }
 
 install_from_release() {
@@ -141,7 +198,6 @@ install_from_release() {
   echo "Downloading $archive"
   curl -fL "$url" -o "$temp_dir/$archive"
 
-  mkdir -p "$INSTALL_DIR"
   tar -xzf "$temp_dir/$archive" -C "$temp_dir"
 
   if [[ ! -f "$temp_dir/$BINARY_NAME" ]]; then
@@ -149,10 +205,14 @@ install_from_release() {
     exit 1
   fi
 
-  install -m 755 "$temp_dir/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+  install_binary "$temp_dir/$BINARY_NAME"
 }
 
 main() {
+  if [[ -z "$INSTALL_DIR" ]]; then
+    INSTALL_DIR="$(default_install_dir)"
+  fi
+
   if [[ "$USE_SOURCE_INSTALL" -eq 1 ]]; then
     install_from_source
   else

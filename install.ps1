@@ -11,11 +11,40 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = "latest"
 }
 
-if ([string]::IsNullOrWhiteSpace($InstallDir)) {
-    $InstallDir = Join-Path $HOME ".local\bin"
+$BinaryName = "reposweep.exe"
+
+function Test-PathContainsDir {
+    param([string]$Candidate)
+
+    $target = [System.IO.Path]::GetFullPath($Candidate).TrimEnd('\')
+    foreach ($entry in ($env:PATH -split ';')) {
+        if ([string]::IsNullOrWhiteSpace($entry)) {
+            continue
+        }
+
+        $normalized = [System.IO.Path]::GetFullPath($entry).TrimEnd('\')
+        if ($normalized.Equals($target, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    return $false
 }
 
-$BinaryName = "reposweep.exe"
+function Resolve-InstallDir {
+    $candidates = @(
+        (Join-Path $HOME ".cargo\bin"),
+        (Join-Path $HOME ".local\bin")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-PathContainsDir -Candidate $candidate) {
+            return $candidate
+        }
+    }
+
+    return (Join-Path $HOME ".local\bin")
+}
 
 function Resolve-Version {
     param([string]$RequestedVersion, [string]$Repository)
@@ -75,6 +104,10 @@ function Install-FromRelease {
             Remove-Item -Recurse -Force $TempDir
         }
     }
+}
+
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+    $InstallDir = Resolve-InstallDir
 }
 
 if ($FromSource) {
