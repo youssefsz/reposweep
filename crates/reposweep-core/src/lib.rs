@@ -14,7 +14,7 @@ pub use domain::{
     ProtectionPolicy, ScanEvent, ScanItem, ScanReport, ScanRequest, ScanScope, ScanTotals,
     ScanWarning, SizeMode, format_bytes,
 };
-pub use error::{Result, ShatterError};
+pub use error::{RepoSweepError, Result};
 pub use infrastructure::{DeletionBackend, FsDeletionBackend, FsDirectoryWalker, ParallelSizer};
 pub use rules::{Rule, RuleMatchKind, RuleSet, built_in_rules};
 pub use services::{DeleteService, ScanService};

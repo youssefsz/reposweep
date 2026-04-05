@@ -7,7 +7,7 @@ use std::time::SystemTime;
 use rayon::prelude::*;
 
 use crate::domain::{CancellationToken, ScanEvent, ScanItem, ScanRequest, ScanWarning, SizeMode};
-use crate::error::{Result, ShatterError};
+use crate::error::{RepoSweepError, Result};
 use crate::rules::RuleSet;
 
 #[derive(Clone, Debug)]
@@ -54,7 +54,7 @@ impl FsDirectoryWalker {
 
             let canonical_root = root
                 .canonicalize()
-                .map_err(|error| ShatterError::io("canonicalize root", root, error))?;
+                .map_err(|error| RepoSweepError::io("canonicalize root", root, error))?;
             let mut queue = VecDeque::from([canonical_root.clone()]);
 
             while let Some(dir) = queue.pop_front() {
@@ -65,10 +65,10 @@ impl FsDirectoryWalker {
                 output.scanned_dirs += 1;
                 send_event(sender, ScanEvent::EnteredPath { path: dir.clone() });
 
-                if is_shatterignore(&dir) {
+                if is_reposweepignore(&dir) {
                     let warning = ScanWarning {
                         path: Some(dir.clone()),
-                        message: "skipped because .shatterignore is present".into(),
+                        message: "skipped because .reposweepignore is present".into(),
                     };
                     push_warning(&mut output.warnings, sender, warning);
                     continue;
@@ -86,7 +86,7 @@ impl FsDirectoryWalker {
                 if let Some(rule_match) = rules.match_directory(&dir, &canonical_root) {
                     if request.scope.includes(rule_match.rule.kind) {
                         let metadata = fs::metadata(&dir)
-                            .map_err(|error| ShatterError::io("metadata", &dir, error))?;
+                            .map_err(|error| RepoSweepError::io("metadata", &dir, error))?;
                         let modified = metadata.modified().ok();
                         if matches_age_filter(request.age_filter, modified) {
                             send_event(
@@ -239,8 +239,8 @@ fn compute_size(path: &Path, cancel: &CancellationToken) -> Option<u64> {
     Some(total)
 }
 
-fn is_shatterignore(path: &Path) -> bool {
-    path.join(".shatterignore").exists()
+fn is_reposweepignore(path: &Path) -> bool {
+    path.join(".reposweepignore").exists()
 }
 
 fn push_warning(

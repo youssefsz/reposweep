@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use miette::IntoDiagnostic;
-use shatter_core::{
+use reposweep_core::{
     ConfigService, DeleteRequest, DeleteService, DeleteStrategy, FileConfigStore,
     FsDeletionBackend, ProtectionPolicy, ScanRequest, ScanScope, ScanService, SizeMode,
     format_bytes,
@@ -12,7 +12,7 @@ use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "shatter",
+    name = "reposweep",
     about = "Clean developer repositories with a safer Rust-powered scanner."
 )]
 struct Cli {
@@ -79,7 +79,7 @@ fn main() -> miette::Result<()> {
 
     let cli = Cli::parse();
     match cli.command.unwrap_or(Command::Tui { path: None }) {
-        Command::Tui { path } => shatter_tui::run(path).into_diagnostic()?,
+        Command::Tui { path } => reposweep_tui::run(path).into_diagnostic()?,
         Command::Scan {
             path,
             scope,
@@ -110,7 +110,7 @@ fn run_scan(
     scope: ScopeArg,
     older_than: Option<String>,
     fast: bool,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     let report = build_service().scan(
         ScanRequest {
             roots: vec![path],
@@ -124,7 +124,7 @@ fn run_scan(
             },
         },
         None,
-        shatter_core::CancellationToken::new(),
+        reposweep_core::CancellationToken::new(),
     )?;
 
     println!(
@@ -161,9 +161,9 @@ fn run_clean(
     fast: bool,
     strategy: StrategyArg,
     yes: bool,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     if !yes {
-        return Err(shatter_core::ShatterError::InvalidRequest(
+        return Err(reposweep_core::RepoSweepError::InvalidRequest(
             "pass --yes to confirm non-interactive cleanup".into(),
         ));
     }
@@ -181,7 +181,7 @@ fn run_clean(
             },
         },
         None,
-        shatter_core::CancellationToken::new(),
+        reposweep_core::CancellationToken::new(),
     )?;
     let result = DeleteService::new(FsDeletionBackend).delete(DeleteRequest {
         items: report.items,
@@ -205,7 +205,7 @@ fn build_service() -> ScanService {
     ScanService::from_config(config)
 }
 
-fn parse_age_filter(input: Option<&str>) -> shatter_core::Result<Option<Duration>> {
+fn parse_age_filter(input: Option<&str>) -> reposweep_core::Result<Option<Duration>> {
     let Some(input) = input else {
         return Ok(None);
     };
@@ -220,7 +220,9 @@ fn parse_age_filter(input: Option<&str>) -> shatter_core::Result<Option<Duration
         .unwrap_or(input.len());
     let (digits, unit) = input.split_at(split_at);
     let value: u64 = digits.parse().map_err(|_| {
-        shatter_core::ShatterError::InvalidRequest(format!("invalid --older-than value: {input}"))
+        reposweep_core::RepoSweepError::InvalidRequest(format!(
+            "invalid --older-than value: {input}"
+        ))
     })?;
 
     let seconds = match unit {
@@ -231,7 +233,7 @@ fn parse_age_filter(input: Option<&str>) -> shatter_core::Result<Option<Duration
         "y" => value * 60 * 60 * 24 * 365,
         "" => value * 60 * 60 * 24,
         _ => {
-            return Err(shatter_core::ShatterError::InvalidRequest(format!(
+            return Err(reposweep_core::RepoSweepError::InvalidRequest(format!(
                 "unsupported duration unit in --older-than: {input}"
             )));
         }

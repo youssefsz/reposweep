@@ -2,19 +2,19 @@
 
 set -euo pipefail
 
-REPO="${SHATTER_REPO:-youssefsz/shatter-rust}"
-BINARY_NAME="shatter"
-INSTALL_DIR="${SHATTER_INSTALL_DIR:-$HOME/.local/bin}"
-REQUESTED_VERSION="${SHATTER_VERSION:-latest}"
+REPO="${REPOSWEEP_REPO:-youssefsz/reposweep}"
+BINARY_NAME="reposweep"
+INSTALL_DIR="${REPOSWEEP_INSTALL_DIR:-$HOME/.local/bin}"
+REQUESTED_VERSION="${REPOSWEEP_VERSION:-latest}"
 USE_SOURCE_INSTALL=0
 
 usage() {
   cat <<'EOF'
-Install Shatter from GitHub Releases.
+Install RepoSweep from GitHub Releases.
 
 Usage:
-  curl -sSL https://raw.githubusercontent.com/youssefsz/shatter-rust/main/install.sh | bash
-  powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/youssefsz/shatter-rust/main/install.ps1 | iex"
+  curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash
+  powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
 
 Options:
   --version <tag>     Install a specific release tag, for example v0.1.0
@@ -23,9 +23,9 @@ Options:
   --help              Show this help
 
 Environment overrides:
-  SHATTER_REPO        GitHub repo slug, for example youssefsz/shatter-rust
-  SHATTER_VERSION     Release tag or "latest"
-  SHATTER_INSTALL_DIR Destination directory, defaults to ~/.local/bin
+  REPOSWEEP_REPO        GitHub repo slug, for example youssefsz/reposweep
+  REPOSWEEP_VERSION     Release tag or "latest"
+  REPOSWEEP_INSTALL_DIR Destination directory, defaults to ~/.local/bin
 EOF
 }
 
@@ -107,16 +107,16 @@ resolve_version() {
 
 install_from_source() {
   need_cmd cargo
-  echo "Building Shatter from source into $INSTALL_DIR"
+  echo "Building RepoSweep from source into $INSTALL_DIR"
   cargo install \
     --locked \
     --git "https://github.com/$REPO.git" \
     --bin "$BINARY_NAME" \
-    --root "${SHATTER_CARGO_ROOT:-$HOME/.cargo}" \
-    shatter
+    --root "${REPOSWEEP_CARGO_ROOT:-$HOME/.cargo}" \
+    reposweep
 
   local cargo_bin
-  cargo_bin="${SHATTER_CARGO_ROOT:-$HOME/.cargo}/bin/$BINARY_NAME"
+  cargo_bin="${REPOSWEEP_CARGO_ROOT:-$HOME/.cargo}/bin/$BINARY_NAME"
   mkdir -p "$INSTALL_DIR"
   cp "$cargo_bin" "$INSTALL_DIR/$BINARY_NAME"
   chmod +x "$INSTALL_DIR/$BINARY_NAME"

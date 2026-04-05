@@ -5,7 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{
     Block, Borders, Cell, Clear, List, ListItem, ListState, Paragraph, Row, Table, TableState, Wrap,
 };
-use shatter_core::format_bytes;
+use reposweep_core::format_bytes;
 
 use crate::state::{AppModel, FilterMode, HomeMode, ResultsState, Screen, SortMode};
 
@@ -35,7 +35,7 @@ pub fn render(frame: &mut Frame<'_>, model: &mut AppModel) {
 }
 
 fn render_home(frame: &mut Frame<'_>, model: &mut AppModel) {
-    let shell = render_app_shell(frame, "Shatter");
+    let shell = render_app_shell(frame, "RepoSweep");
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -51,7 +51,7 @@ fn render_home(frame: &mut Frame<'_>, model: &mut AppModel) {
     render_header(
         frame,
         chunks[0],
-        "Shatter",
+        "RepoSweep",
         "Clean project caches, builds, and dependencies without leaving the terminal",
         match model.home.mode {
             HomeMode::PathEntry => "HOME",
@@ -133,7 +133,7 @@ fn render_home(frame: &mut Frame<'_>, model: &mut AppModel) {
                     Span::raw(" exits the app."),
                 ]),
                 Line::from(""),
-                muted_line("Shatter scans common cache, build, and dependency directories so you can review them before deleting anything."),
+                muted_line("RepoSweep scans common cache, build, and dependency directories so you can review them before deleting anything."),
             ])
             .block(panel("Overview"))
             .wrap(Wrap { trim: true });
@@ -237,7 +237,7 @@ fn render_home(frame: &mut Frame<'_>, model: &mut AppModel) {
 }
 
 fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
-    let shell = render_app_shell(frame, "Shatter");
+    let shell = render_app_shell(frame, "RepoSweep");
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -358,7 +358,7 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
 
 fn render_results(frame: &mut Frame<'_>, model: &mut AppModel) {
     let Some(results) = &model.results else {
-        let shell = render_app_shell(frame, "Shatter");
+        let shell = render_app_shell(frame, "RepoSweep");
         frame.render_widget(
             Paragraph::new("No results yet.")
                 .alignment(Alignment::Center)
@@ -368,7 +368,7 @@ fn render_results(frame: &mut Frame<'_>, model: &mut AppModel) {
         return;
     };
 
-    let shell = render_app_shell(frame, "Shatter");
+    let shell = render_app_shell(frame, "RepoSweep");
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -553,7 +553,7 @@ fn render_confirm(frame: &mut Frame<'_>, model: &mut AppModel) {
     let popup = Paragraph::new(vec![
         Line::from(format!(
             "{} {} item(s) for {}",
-            if pending.strategy == shatter_core::DeleteStrategy::Trash {
+            if pending.strategy == reposweep_core::DeleteStrategy::Trash {
                 "Move"
             } else {
                 "Permanently delete"
@@ -637,7 +637,7 @@ fn render_delete_progress(frame: &mut Frame<'_>, model: &mut AppModel) {
 
     let message = format!(
         "{} {} item(s)...",
-        if model.delete.strategy == shatter_core::DeleteStrategy::Trash {
+        if model.delete.strategy == reposweep_core::DeleteStrategy::Trash {
             "Moving to trash"
         } else {
             "Deleting"
@@ -656,7 +656,7 @@ fn render_delete_progress(frame: &mut Frame<'_>, model: &mut AppModel) {
             Style::default().fg(TEXT).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        muted_line("Please wait while Shatter finishes the cleanup."),
+        muted_line("Please wait while RepoSweep finishes the cleanup."),
     ])
     .alignment(Alignment::Center)
     .block(dialog("Working"))
@@ -933,7 +933,7 @@ mod tests {
 
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
-    use shatter_core::{ArtifactKind, ScanItem, ScanReport, ScanTotals};
+    use reposweep_core::{ArtifactKind, ScanItem, ScanReport, ScanTotals};
 
     use crate::state::{AppModel, ResultsState, Screen};
     use crate::storage::AppState;

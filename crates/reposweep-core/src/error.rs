@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ShatterError {
+pub enum RepoSweepError {
     #[error("{operation} failed for {path}: {source}")]
     Io {
         operation: &'static str,
@@ -21,9 +21,9 @@ pub enum ShatterError {
     Worker(String),
 }
 
-pub type Result<T> = std::result::Result<T, ShatterError>;
+pub type Result<T> = std::result::Result<T, RepoSweepError>;
 
-impl ShatterError {
+impl RepoSweepError {
     pub fn io(operation: &'static str, path: impl Into<PathBuf>, source: std::io::Error) -> Self {
         Self::Io {
             operation,

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::domain::DeleteStrategy;
-use crate::error::{Result, ShatterError};
+use crate::error::{RepoSweepError, Result};
 
 pub trait DeletionBackend: Send + Sync {
     fn delete(&self, path: &Path, strategy: DeleteStrategy) -> Result<()>;
@@ -15,7 +15,7 @@ impl DeletionBackend for FsDeletionBackend {
     fn delete(&self, path: &Path, strategy: DeleteStrategy) -> Result<()> {
         match strategy {
             DeleteStrategy::Trash => {
-                trash::delete(path).map_err(|error| ShatterError::Delete {
+                trash::delete(path).map_err(|error| RepoSweepError::Delete {
                     path: path.to_path_buf(),
                     message: error.to_string(),
                 })?;
@@ -23,10 +23,10 @@ impl DeletionBackend for FsDeletionBackend {
             DeleteStrategy::Permanent => {
                 if path.is_dir() {
                     fs::remove_dir_all(path)
-                        .map_err(|error| ShatterError::io("remove dir", path, error))?;
+                        .map_err(|error| RepoSweepError::io("remove dir", path, error))?;
                 } else {
                     fs::remove_file(path)
-                        .map_err(|error| ShatterError::io("remove file", path, error))?;
+                        .map_err(|error| RepoSweepError::io("remove file", path, error))?;
                 }
             }
         }

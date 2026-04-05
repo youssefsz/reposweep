@@ -1,7 +1,7 @@
 param(
-    [string]$Version = $env:SHATTER_VERSION,
-    [string]$InstallDir = $env:SHATTER_INSTALL_DIR,
-    [string]$Repo = $(if ($env:SHATTER_REPO) { $env:SHATTER_REPO } else { "youssefsz/shatter-rust" }),
+    [string]$Version = $env:REPOSWEEP_VERSION,
+    [string]$InstallDir = $env:REPOSWEEP_INSTALL_DIR,
+    [string]$Repo = $(if ($env:REPOSWEEP_REPO) { $env:REPOSWEEP_REPO } else { "youssefsz/reposweep" }),
     [switch]$FromSource
 )
 
@@ -15,7 +15,7 @@ if ([string]::IsNullOrWhiteSpace($InstallDir)) {
     $InstallDir = Join-Path $HOME ".local\bin"
 }
 
-$BinaryName = "shatter.exe"
+$BinaryName = "reposweep.exe"
 
 function Resolve-Version {
     param([string]$RequestedVersion, [string]$Repository)
@@ -38,10 +38,10 @@ function Install-FromSource {
         throw "cargo is required for --FromSource installs"
     }
 
-    $CargoRoot = if ($env:SHATTER_CARGO_ROOT) { $env:SHATTER_CARGO_ROOT } else { Join-Path $HOME ".cargo" }
-    cargo install --locked --git "https://github.com/$Repository.git" --bin shatter --root $CargoRoot shatter
+    $CargoRoot = if ($env:REPOSWEEP_CARGO_ROOT) { $env:REPOSWEEP_CARGO_ROOT } else { Join-Path $HOME ".cargo" }
+    cargo install --locked --git "https://github.com/$Repository.git" --bin reposweep --root $CargoRoot reposweep
 
-    $CargoBinary = Join-Path $CargoRoot "bin\shatter.exe"
+    $CargoBinary = Join-Path $CargoRoot "bin\reposweep.exe"
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
     Copy-Item $CargoBinary (Join-Path $Destination $BinaryName) -Force
 }
@@ -51,9 +51,9 @@ function Install-FromRelease {
 
     $ResolvedVersion = Resolve-Version -RequestedVersion $RequestedVersion -Repository $Repository
     $Target = "x86_64-pc-windows-msvc"
-    $ArchiveName = "shatter-$ResolvedVersion-$Target.zip"
+    $ArchiveName = "reposweep-$ResolvedVersion-$Target.zip"
     $Url = "https://github.com/$Repository/releases/download/$ResolvedVersion/$ArchiveName"
-    $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("shatter-install-" + [System.Guid]::NewGuid().ToString("N"))
+    $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("reposweep-install-" + [System.Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $TempDir | Out-Null
 
     try {

@@ -1,7 +1,7 @@
 use std::fs;
 use std::time::Duration;
 
-use shatter_core::{
+use reposweep_core::{
     CancellationToken, Config, ConfigStore, DeleteRequest, DeleteStrategy, FileConfigStore,
     FsDeletionBackend, ScanRequest, ScanScope, ScanService, SizeMode,
 };
@@ -28,7 +28,7 @@ fn scan_finds_common_artifacts() {
                 roots: vec![root.to_path_buf()],
                 scope: ScanScope::All,
                 age_filter: None,
-                protection_policy: shatter_core::ProtectionPolicy::RespectConfig,
+                protection_policy: reposweep_core::ProtectionPolicy::RespectConfig,
                 size_mode: SizeMode::Accurate,
             },
             None,
@@ -42,12 +42,12 @@ fn scan_finds_common_artifacts() {
 }
 
 #[test]
-fn shatterignore_skips_subtree() {
+fn reposweepignore_skips_subtree() {
     let temp = tempfile::tempdir().expect("tempdir");
     let root = temp.path();
     fs::write(root.join("package.json"), "{}").expect("package.json");
     fs::create_dir_all(root.join("build/cache")).expect("build");
-    fs::write(root.join("build/.shatterignore"), "").expect(".shatterignore");
+    fs::write(root.join("build/.reposweepignore"), "").expect(".reposweepignore");
 
     let report = create_service()
         .scan(
@@ -55,7 +55,7 @@ fn shatterignore_skips_subtree() {
                 roots: vec![root.to_path_buf()],
                 scope: ScanScope::All,
                 age_filter: None,
-                protection_policy: shatter_core::ProtectionPolicy::RespectConfig,
+                protection_policy: reposweep_core::ProtectionPolicy::RespectConfig,
                 size_mode: SizeMode::Skip,
             },
             None,
@@ -88,7 +88,7 @@ fn symlinks_are_not_followed() {
                 roots: vec![root.to_path_buf()],
                 scope: ScanScope::All,
                 age_filter: None,
-                protection_policy: shatter_core::ProtectionPolicy::RespectConfig,
+                protection_policy: reposweep_core::ProtectionPolicy::RespectConfig,
                 size_mode: SizeMode::Skip,
             },
             None,
@@ -119,7 +119,7 @@ fn cancellation_produces_partial_report() {
                 roots: vec![root.to_path_buf()],
                 scope: ScanScope::All,
                 age_filter: Some(Duration::from_secs(0)),
-                protection_policy: shatter_core::ProtectionPolicy::RespectConfig,
+                protection_policy: reposweep_core::ProtectionPolicy::RespectConfig,
                 size_mode: SizeMode::Accurate,
             },
             None,
@@ -150,7 +150,7 @@ fn delete_selected_vs_all_works() {
                 roots: vec![root.to_path_buf()],
                 scope: ScanScope::All,
                 age_filter: None,
-                protection_policy: shatter_core::ProtectionPolicy::RespectConfig,
+                protection_policy: reposweep_core::ProtectionPolicy::RespectConfig,
                 size_mode: SizeMode::Skip,
             },
             None,
@@ -158,7 +158,7 @@ fn delete_selected_vs_all_works() {
         )
         .expect("scan");
 
-    let delete_service = shatter_core::DeleteService::new(FsDeletionBackend);
+    let delete_service = reposweep_core::DeleteService::new(FsDeletionBackend);
     let selected = report.items.first().cloned().expect("first item");
     let result = delete_service.delete(DeleteRequest {
         items: vec![selected],

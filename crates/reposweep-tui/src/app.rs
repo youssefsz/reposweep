@@ -10,7 +10,7 @@ use crossterm::terminal::{
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use shatter_core::{
+use reposweep_core::{
     CancellationToken, ConfigService, DeleteRequest, DeleteService, FileConfigStore,
     FsDeletionBackend, ProtectionPolicy, ScanRequest, ScanScope, ScanService, SizeMode,
 };
@@ -19,19 +19,20 @@ use tracing::warn;
 use crate::state::{AppModel, HomeMode, Screen, handle_scan_event};
 use crate::{storage, ui};
 
-pub fn run(initial_path: Option<PathBuf>) -> shatter_core::Result<()> {
+pub fn run(initial_path: Option<PathBuf>) -> reposweep_core::Result<()> {
     let mut app_state = storage::load();
     let mut model = AppModel::new(initial_path, &app_state);
 
-    enable_raw_mode()
-        .map_err(|error| shatter_core::ShatterError::Config(format!("raw mode failed: {error}")))?;
+    enable_raw_mode().map_err(|error| {
+        reposweep_core::RepoSweepError::Config(format!("raw mode failed: {error}"))
+    })?;
     let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen).map_err(|error| {
-        shatter_core::ShatterError::Config(format!("alternate screen failed: {error}"))
+        reposweep_core::RepoSweepError::Config(format!("alternate screen failed: {error}"))
     })?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).map_err(|error| {
-        shatter_core::ShatterError::Config(format!("failed to create terminal: {error}"))
+        reposweep_core::RepoSweepError::Config(format!("failed to create terminal: {error}"))
     })?;
 
     let run_result = run_loop(&mut terminal, &mut model, &mut app_state);
@@ -48,7 +49,7 @@ fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     model: &mut AppModel,
     app_state: &mut storage::AppState,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     loop {
         model.tick = model.tick.saturating_add(1);
         drain_background_messages(model);
@@ -56,7 +57,7 @@ fn run_loop(
         terminal
             .draw(|frame| ui::render(frame, model))
             .map_err(|error| {
-                shatter_core::ShatterError::Config(format!("terminal draw failed: {error}"))
+                reposweep_core::RepoSweepError::Config(format!("terminal draw failed: {error}"))
             })?;
 
         if model.should_quit {
@@ -64,10 +65,10 @@ fn run_loop(
         }
 
         if event::poll(Duration::from_millis(120)).map_err(|error| {
-            shatter_core::ShatterError::Config(format!("event poll failed: {error}"))
+            reposweep_core::RepoSweepError::Config(format!("event poll failed: {error}"))
         })? {
             let event = event::read().map_err(|error| {
-                shatter_core::ShatterError::Config(format!("event read failed: {error}"))
+                reposweep_core::RepoSweepError::Config(format!("event read failed: {error}"))
             })?;
             if let Event::Key(key) = event {
                 if key.kind == KeyEventKind::Press {
@@ -84,7 +85,7 @@ fn handle_key(
     app_state: &mut storage::AppState,
     code: KeyCode,
     modifiers: KeyModifiers,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     if model.summary.is_some() {
         return handle_summary_key(model, app_state, code);
     }
@@ -130,7 +131,7 @@ fn handle_home_key(
     app_state: &mut storage::AppState,
     code: KeyCode,
     modifiers: KeyModifiers,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     match code {
         KeyCode::Esc => {
             if model.last_error.is_some() {
@@ -180,7 +181,7 @@ fn handle_results_key(
     model: &mut AppModel,
     app_state: &mut storage::AppState,
     code: KeyCode,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     let Some(results) = &mut model.results else {
         return Ok(());
     };
@@ -199,10 +200,10 @@ fn handle_results_key(
         KeyCode::Char('f') => results.cycle_filter(),
         KeyCode::Char('s') => results.cycle_sort(),
         KeyCode::Enter | KeyCode::Delete | KeyCode::Char('d') | KeyCode::Char('x') => {
-            results.begin_delete(shatter_core::DeleteStrategy::Trash);
+            results.begin_delete(reposweep_core::DeleteStrategy::Trash);
         }
         KeyCode::Char('D') => {
-            results.begin_delete(shatter_core::DeleteStrategy::Permanent);
+            results.begin_delete(reposweep_core::DeleteStrategy::Permanent);
         }
         KeyCode::Char('r') => start_scan_from_input(model, app_state)?,
         _ => {}
@@ -211,7 +212,7 @@ fn handle_results_key(
     Ok(())
 }
 
-fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Result<()> {
+fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> reposweep_core::Result<()> {
     let Some(results) = &model.results else {
         return Ok(());
     };
@@ -228,7 +229,7 @@ fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Resu
                 .pending_delete
                 .as_ref()
                 .map(|pending| pending.strategy)
-                .unwrap_or(shatter_core::DeleteStrategy::Trash);
+                .unwrap_or(reposweep_core::DeleteStrategy::Trash);
             let items = results.delete_items();
             spawn_delete(model, items, strategy);
         }
@@ -238,7 +239,7 @@ fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Resu
     Ok(())
 }
 
-fn handle_delete_progress_key(model: &mut AppModel, code: KeyCode) -> shatter_core::Result<()> {
+fn handle_delete_progress_key(model: &mut AppModel, code: KeyCode) -> reposweep_core::Result<()> {
     if matches!(code, KeyCode::Char('q')) {
         model.should_quit = true;
     }
@@ -249,7 +250,7 @@ fn handle_summary_key(
     model: &mut AppModel,
     app_state: &mut storage::AppState,
     code: KeyCode,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     match code {
         KeyCode::Char('q') => model.should_quit = true,
         KeyCode::Enter | KeyCode::Esc => {
@@ -271,7 +272,7 @@ fn handle_summary_key(
 fn start_scan_from_input(
     model: &mut AppModel,
     app_state: &mut storage::AppState,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     let root = PathBuf::from(model.home.input.trim());
     if root.as_os_str().is_empty() {
         model.set_error("Enter a path to scan.");
@@ -326,8 +327,8 @@ fn spawn_scan(model: &mut AppModel, root: PathBuf) {
 
 fn spawn_delete(
     model: &mut AppModel,
-    items: Vec<shatter_core::ScanItem>,
-    strategy: shatter_core::DeleteStrategy,
+    items: Vec<reposweep_core::ScanItem>,
+    strategy: reposweep_core::DeleteStrategy,
 ) {
     let item_count = items.len();
     let (result_tx, result_rx) = mpsc::channel();
@@ -397,14 +398,14 @@ fn drain_background_messages(model: &mut AppModel) {
 
 fn restore_terminal(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-) -> shatter_core::Result<()> {
+) -> reposweep_core::Result<()> {
     disable_raw_mode().map_err(|error| {
-        shatter_core::ShatterError::Config(format!("disable raw mode failed: {error}"))
+        reposweep_core::RepoSweepError::Config(format!("disable raw mode failed: {error}"))
     })?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen).map_err(|error| {
-        shatter_core::ShatterError::Config(format!("leave alternate screen failed: {error}"))
+        reposweep_core::RepoSweepError::Config(format!("leave alternate screen failed: {error}"))
     })?;
-    terminal
-        .show_cursor()
-        .map_err(|error| shatter_core::ShatterError::Config(format!("show cursor failed: {error}")))
+    terminal.show_cursor().map_err(|error| {
+        reposweep_core::RepoSweepError::Config(format!("show cursor failed: {error}"))
+    })
 }

@@ -1,5 +1,5 @@
 [package]
-name = "shatter"
+name = "reposweep"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,5 +10,5 @@ clap.workspace = true
 miette.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-shatter-core = { path = "../shatter-core" }
-shatter-tui = { path = "../shatter-tui" }
+reposweep-core = { path = "../reposweep-core" }
+reposweep-tui = { path = "../reposweep-tui" }

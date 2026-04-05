@@ -5,7 +5,7 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{ArtifactKind, DeleteStrategy};
-use crate::error::{Result, ShatterError};
+use crate::error::{RepoSweepError, Result};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CustomRuleConfig {
@@ -90,20 +90,20 @@ impl ConfigStore for FileConfigStore {
         }
 
         let contents = fs::read_to_string(&paths.config_file)
-            .map_err(|error| ShatterError::io("read config", &paths.config_file, error))?;
+            .map_err(|error| RepoSweepError::io("read config", &paths.config_file, error))?;
         toml::from_str(&contents)
-            .map_err(|error| ShatterError::Config(format!("failed to parse config: {error}")))
+            .map_err(|error| RepoSweepError::Config(format!("failed to parse config: {error}")))
     }
 
     fn save(&self, config: &Config) -> Result<()> {
         let paths = self.paths()?;
         fs::create_dir_all(&paths.config_dir)
-            .map_err(|error| ShatterError::io("create config dir", &paths.config_dir, error))?;
+            .map_err(|error| RepoSweepError::io("create config dir", &paths.config_dir, error))?;
         let contents = toml::to_string_pretty(config).map_err(|error| {
-            ShatterError::Config(format!("failed to serialize config: {error}"))
+            RepoSweepError::Config(format!("failed to serialize config: {error}"))
         })?;
         fs::write(&paths.config_file, contents)
-            .map_err(|error| ShatterError::io("write config", &paths.config_file, error))
+            .map_err(|error| RepoSweepError::io("write config", &paths.config_file, error))
     }
 
     fn paths(&self) -> Result<ConfigPaths> {
@@ -149,8 +149,8 @@ where
 }
 
 fn project_dirs() -> Result<ProjectDirs> {
-    ProjectDirs::from("dev", "Shatter", "shatter")
-        .ok_or_else(|| ShatterError::Config("failed to resolve OS config directories".into()))
+    ProjectDirs::from("dev", "RepoSweep", "reposweep")
+        .ok_or_else(|| RepoSweepError::Config("failed to resolve OS config directories".into()))
 }
 
 pub fn resolve_protected_path(root: &Path, protected: &Path) -> PathBuf {

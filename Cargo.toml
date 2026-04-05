@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "crates/shatter-core",
-    "crates/shatter-tui",
-    "crates/shatter-cli",
+    "crates/reposweep-core",
+    "crates/reposweep-tui",
+    "crates/reposweep-cli",
 ]
 resolver = "3"
 

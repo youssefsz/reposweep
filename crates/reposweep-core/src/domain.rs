@@ -86,7 +86,7 @@ pub struct ScanRequest {
 impl ScanRequest {
     pub fn validate(&self) -> crate::Result<()> {
         if self.roots.is_empty() {
-            return Err(crate::ShatterError::InvalidRequest(
+            return Err(crate::RepoSweepError::InvalidRequest(
                 "at least one root is required".into(),
             ));
         }

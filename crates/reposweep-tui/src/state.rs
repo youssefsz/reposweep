@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 
-use shatter_core::{
+use reposweep_core::{
     CancellationToken, DeleteResult, DeleteStrategy, Result as CoreResult, ScanEvent, ScanItem,
     ScanReport, format_bytes,
 };
@@ -312,8 +312,8 @@ impl ResultsState {
             .enumerate()
             .filter(|(_, item)| match self.filter {
                 FilterMode::All => true,
-                FilterMode::CacheAndBuild => item.kind != shatter_core::ArtifactKind::Dependency,
-                FilterMode::Dependencies => item.kind == shatter_core::ArtifactKind::Dependency,
+                FilterMode::CacheAndBuild => item.kind != reposweep_core::ArtifactKind::Dependency,
+                FilterMode::Dependencies => item.kind == reposweep_core::ArtifactKind::Dependency,
             })
             .map(|(index, _)| index)
             .collect();
@@ -546,8 +546,8 @@ pub fn footer_hint(results: &ResultsState) -> String {
     )
 }
 
-fn recalculate_totals(items: &[ScanItem]) -> shatter_core::ScanTotals {
-    let mut totals = shatter_core::ScanTotals {
+fn recalculate_totals(items: &[ScanItem]) -> reposweep_core::ScanTotals {
+    let mut totals = reposweep_core::ScanTotals {
         items: items.len(),
         bytes: 0,
         by_kind: BTreeMap::new(),
@@ -567,7 +567,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::Duration;
 
-    use shatter_core::{ArtifactKind, ScanItem, ScanReport, ScanTotals, ScanWarning};
+    use reposweep_core::{ArtifactKind, ScanItem, ScanReport, ScanTotals, ScanWarning};
 
     use super::*;
 
