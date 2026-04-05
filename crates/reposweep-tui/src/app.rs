@@ -106,19 +106,15 @@ fn handle_key(
     match model.screen {
         Screen::Home | Screen::Error => handle_home_key(model, app_state, code, modifiers),
         Screen::Scanning => {
-            match code {
-                KeyCode::Char('c') | KeyCode::Esc => {
-                    if let Some(cancel) = &model.scan.cancel {
-                        cancel.cancel();
-                    }
+            if code == KeyCode::Esc || key_char_eq(code, 'c') {
+                if let Some(cancel) = &model.scan.cancel {
+                    cancel.cancel();
                 }
-                KeyCode::Char('q') => {
-                    if let Some(cancel) = &model.scan.cancel {
-                        cancel.cancel();
-                    }
-                    model.should_quit = true;
+            } else if key_char_eq(code, 'q') {
+                if let Some(cancel) = &model.scan.cancel {
+                    cancel.cancel();
                 }
-                _ => {}
+                model.should_quit = true;
             }
             Ok(())
         }
@@ -153,18 +149,22 @@ fn handle_home_key(
             HomeMode::PathEntry => start_scan_from_input(model, app_state)?,
             HomeMode::Browser => model.enter_browser(),
         },
-        KeyCode::Char('s') if model.home.mode == HomeMode::Browser => {
+        KeyCode::Char(character)
+            if model.home.mode == HomeMode::Browser && character.eq_ignore_ascii_case(&'s') =>
+        {
             model.home.input = model.home.browser_path.display().to_string();
             start_scan_from_input(model, app_state)?;
         }
-        KeyCode::Char('q') if model.home.mode == HomeMode::Browser => {
+        KeyCode::Char(character)
+            if model.home.mode == HomeMode::Browser && character.eq_ignore_ascii_case(&'q') =>
+        {
             model.should_quit = true;
         }
         KeyCode::Backspace if model.home.mode == HomeMode::PathEntry => {
             model.home.input.pop();
         }
         KeyCode::Char(character) if model.home.mode == HomeMode::PathEntry => {
-            if modifiers.contains(KeyModifiers::CONTROL) && character == 'c' {
+            if modifiers.contains(KeyModifiers::CONTROL) && character.eq_ignore_ascii_case(&'c') {
                 model.should_quit = true;
                 return Ok(());
             } else if modifiers.contains(KeyModifiers::CONTROL) {
@@ -187,25 +187,29 @@ fn handle_results_key(
     };
 
     match code {
-        KeyCode::Char('q') => model.should_quit = true,
-        KeyCode::Esc | KeyCode::Char('h') => {
+        code if key_char_eq(code, 'q') => model.should_quit = true,
+        KeyCode::Esc => {
+            model.summary = None;
+            model.screen = Screen::Home;
+        }
+        code if key_char_eq(code, 'h') => {
             model.summary = None;
             model.screen = Screen::Home;
         }
         KeyCode::Up => results.move_selection(-1),
         KeyCode::Down => results.move_selection(1),
         KeyCode::Char(' ') => results.toggle_selected(),
-        KeyCode::Char('a') => results.toggle_all_visible(),
-        KeyCode::Char('n') => results.clear_selection(),
-        KeyCode::Char('f') => results.cycle_filter(),
-        KeyCode::Char('s') => results.cycle_sort(),
+        code if key_char_eq(code, 'a') => results.toggle_all_visible(),
+        code if key_char_eq(code, 'n') => results.clear_selection(),
+        code if key_char_eq(code, 'f') => results.cycle_filter(),
+        code if key_char_eq(code, 's') => results.cycle_sort(),
         KeyCode::Enter | KeyCode::Delete | KeyCode::Char('d') | KeyCode::Char('x') => {
             results.begin_delete(reposweep_core::DeleteStrategy::Trash);
         }
         KeyCode::Char('D') => {
             results.begin_delete(reposweep_core::DeleteStrategy::Permanent);
         }
-        KeyCode::Char('r') => start_scan_from_input(model, app_state)?,
+        code if key_char_eq(code, 'r') => start_scan_from_input(model, app_state)?,
         _ => {}
     }
 
@@ -218,13 +222,27 @@ fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> reposweep_core::Re
     };
 
     match code {
-        KeyCode::Esc | KeyCode::Char('n') => {
+        KeyCode::Esc => {
             if let Some(results) = &mut model.results {
                 results.pending_delete = None;
             }
         }
-        KeyCode::Char('q') => model.should_quit = true,
-        KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+        code if key_char_eq(code, 'n') => {
+            if let Some(results) = &mut model.results {
+                results.pending_delete = None;
+            }
+        }
+        code if key_char_eq(code, 'q') => model.should_quit = true,
+        KeyCode::Enter | KeyCode::Char('Y') => {
+            let strategy = results
+                .pending_delete
+                .as_ref()
+                .map(|pending| pending.strategy)
+                .unwrap_or(reposweep_core::DeleteStrategy::Trash);
+            let items = results.delete_items();
+            spawn_delete(model, items, strategy);
+        }
+        code if key_char_eq(code, 'y') => {
             let strategy = results
                 .pending_delete
                 .as_ref()
@@ -240,7 +258,7 @@ fn handle_confirm_key(model: &mut AppModel, code: KeyCode) -> reposweep_core::Re
 }
 
 fn handle_delete_progress_key(model: &mut AppModel, code: KeyCode) -> reposweep_core::Result<()> {
-    if matches!(code, KeyCode::Char('q')) {
+    if key_char_eq(code, 'q') {
         model.should_quit = true;
     }
     Ok(())
@@ -252,15 +270,15 @@ fn handle_summary_key(
     code: KeyCode,
 ) -> reposweep_core::Result<()> {
     match code {
-        KeyCode::Char('q') => model.should_quit = true,
+        code if key_char_eq(code, 'q') => model.should_quit = true,
         KeyCode::Enter | KeyCode::Esc => {
             model.summary = None;
         }
-        KeyCode::Char('h') => {
+        code if key_char_eq(code, 'h') => {
             model.summary = None;
             model.screen = Screen::Home;
         }
-        KeyCode::Char('r') => {
+        code if key_char_eq(code, 'r') => {
             model.summary = None;
             start_scan_from_input(model, app_state)?;
         }
@@ -408,4 +426,116 @@ fn restore_terminal(
     terminal.show_cursor().map_err(|error| {
         reposweep_core::RepoSweepError::Config(format!("show cursor failed: {error}"))
     })
+}
+
+fn key_char_eq(code: KeyCode, expected: char) -> bool {
+    matches!(code, KeyCode::Char(character) if character.eq_ignore_ascii_case(&expected))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    use crossterm::event::{KeyCode, KeyModifiers};
+    use reposweep_core::{ArtifactKind, CancellationToken, ScanItem, ScanReport, ScanTotals};
+    use tempfile::tempdir;
+
+    use super::handle_key;
+    use crate::state::{AppModel, ResultsState, Screen};
+    use crate::storage::AppState;
+
+    #[test]
+    fn uppercase_cancel_shortcut_stops_scanning() {
+        let dir = tempdir().expect("tempdir");
+        let mut model = AppModel::new(Some(dir.path().to_path_buf()), &AppState::default());
+        let mut app_state = AppState::default();
+        let cancel = CancellationToken::new();
+
+        model.screen = Screen::Scanning;
+        model.scan.cancel = Some(cancel.clone());
+
+        handle_key(
+            &mut model,
+            &mut app_state,
+            KeyCode::Char('C'),
+            KeyModifiers::NONE,
+        )
+        .expect("handle key");
+
+        assert!(cancel.is_cancelled());
+    }
+
+    #[test]
+    fn uppercase_results_shortcuts_are_recognized() {
+        let dir = tempdir().expect("tempdir");
+        let mut model = AppModel::new(Some(dir.path().to_path_buf()), &AppState::default());
+        let mut app_state = AppState::default();
+
+        model.screen = Screen::Results;
+        model.results = Some(ResultsState::new(sample_report()));
+
+        handle_key(
+            &mut model,
+            &mut app_state,
+            KeyCode::Char('F'),
+            KeyModifiers::SHIFT,
+        )
+        .expect("handle key");
+        assert_eq!(
+            model.results.as_ref().map(|results| results.filter),
+            Some(crate::state::FilterMode::CacheAndBuild)
+        );
+
+        handle_key(
+            &mut model,
+            &mut app_state,
+            KeyCode::Char('S'),
+            KeyModifiers::SHIFT,
+        )
+        .expect("handle key");
+        assert_eq!(
+            model.results.as_ref().map(|results| results.sort),
+            Some(crate::state::SortMode::PathAscending)
+        );
+    }
+
+    #[test]
+    fn path_entry_keeps_typed_case() {
+        let dir = tempdir().expect("tempdir");
+        let mut model = AppModel::new(Some(dir.path().to_path_buf()), &AppState::default());
+        let mut app_state = AppState::default();
+
+        model.screen = Screen::Home;
+        model.home.input.clear();
+
+        handle_key(
+            &mut model,
+            &mut app_state,
+            KeyCode::Char('C'),
+            KeyModifiers::SHIFT,
+        )
+        .expect("handle key");
+
+        assert_eq!(model.home.input, "C");
+    }
+
+    fn sample_report() -> ScanReport {
+        ScanReport {
+            items: vec![ScanItem {
+                path: PathBuf::from("/tmp/example"),
+                kind: ArtifactKind::Build,
+                ecosystem: "rust".into(),
+                rule_name: "target".into(),
+                bytes: Some(1024),
+                last_modified: None,
+                project_root: None,
+                notes: vec![],
+            }],
+            totals: ScanTotals::default(),
+            warnings: vec![],
+            duration: Duration::from_secs(1),
+            cancelled: false,
+        }
+    }
 }

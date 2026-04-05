@@ -357,7 +357,7 @@ fn render_scanning(frame: &mut Frame<'_>, model: &mut AppModel) {
 }
 
 fn render_results(frame: &mut Frame<'_>, model: &mut AppModel) {
-    let Some(results) = &model.results else {
+    let Some(results) = &mut model.results else {
         let shell = render_app_shell(frame, "RepoSweep");
         frame.render_widget(
             Paragraph::new("No results yet.")
@@ -376,7 +376,7 @@ fn render_results(frame: &mut Frame<'_>, model: &mut AppModel) {
             Constraint::Length(4),
             Constraint::Min(10),
             Constraint::Length(5),
-            Constraint::Length(3),
+            Constraint::Length(4),
         ])
         .margin(1)
         .split(shell);
@@ -411,22 +411,38 @@ fn render_results(frame: &mut Frame<'_>, model: &mut AppModel) {
     render_results_table(frame, chunks[2], results);
     render_details(frame, chunks[3], results);
 
-    let footer = status_bar(vec![
-        keycap("Space"),
-        Span::raw(" toggle   "),
-        keycap("f"),
-        Span::raw(" filter   "),
-        keycap("s"),
-        Span::raw(" sort   "),
-        keycap("Enter"),
-        Span::raw(" trash   "),
-        keycap("Shift+d"),
-        Span::raw(" delete"),
-    ]);
+    let footer = Paragraph::new(vec![
+        Line::from(vec![
+            keycap("Space"),
+            Span::raw(" toggle   "),
+            keycap("a"),
+            Span::raw(" all   "),
+            keycap("n"),
+            Span::raw(" clear   "),
+            keycap("f"),
+            Span::raw(" filter   "),
+            keycap("s"),
+            Span::raw(" sort"),
+        ]),
+        Line::from(vec![
+            keycap("Enter"),
+            Span::raw(" trash   "),
+            keycap("Shift+d"),
+            Span::raw(" delete   "),
+            keycap("h"),
+            Span::raw(" home   "),
+            keycap("r"),
+            Span::raw(" rescan   "),
+            keycap("q"),
+            Span::raw(" quit"),
+        ]),
+    ])
+    .block(panel("Controls"))
+    .style(Style::default().fg(TEXT));
     frame.render_widget(footer, chunks[4]);
 }
 
-fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &ResultsState) {
+fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &mut ResultsState) {
     let visible = results.visible_indices();
     let rows: Vec<Row<'_>> = visible
         .iter()
@@ -471,13 +487,22 @@ fn render_results_table(frame: &mut Frame<'_>, area: Rect, results: &ResultsStat
     .column_spacing(1)
     .row_highlight_style(Style::default().bg(SURFACE_HI).fg(TEXT));
 
-    let mut state = TableState::default();
-    state.select(Some(
-        results
-            .selected_visible
-            .min(visible.len().saturating_sub(1)),
-    ));
+    let table_viewport = area.height.saturating_sub(4) as usize;
+    sync_list_offset(
+        &mut results.scroll_offset,
+        results.selected_visible,
+        visible.len(),
+        table_viewport,
+    );
+    let mut state = TableState::default()
+        .with_offset(results.scroll_offset)
+        .with_selected(Some(
+            results
+                .selected_visible
+                .min(visible.len().saturating_sub(1)),
+        ));
     frame.render_stateful_widget(table, area, &mut state);
+    results.scroll_offset = state.offset();
 }
 
 fn render_details(frame: &mut Frame<'_>, area: Rect, results: &ResultsState) {
@@ -938,7 +963,7 @@ mod tests {
     use crate::state::{AppModel, ResultsState, Screen};
     use crate::storage::AppState;
 
-    use super::render;
+    use super::{render, render_results_table};
 
     #[test]
     fn render_results_smoke_test() {
@@ -966,5 +991,41 @@ mod tests {
         terminal
             .draw(|frame| render(frame, &mut model))
             .expect("draw");
+    }
+
+    #[test]
+    fn results_table_keeps_scroll_offset_when_selection_moves_back_up() {
+        let backend = TestBackend::new(80, 8);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        let mut results = ResultsState::new(ScanReport {
+            items: (0..12)
+                .map(|index| ScanItem {
+                    path: PathBuf::from(format!("/tmp/item-{index}")),
+                    kind: ArtifactKind::Build,
+                    ecosystem: "rust".into(),
+                    rule_name: "target".into(),
+                    bytes: Some(1024),
+                    last_modified: None,
+                    project_root: None,
+                    notes: vec![],
+                })
+                .collect(),
+            totals: ScanTotals::default(),
+            warnings: vec![],
+            duration: Duration::from_secs(1),
+            cancelled: false,
+        });
+
+        results.selected_visible = 11;
+        terminal
+            .draw(|frame| render_results_table(frame, frame.area(), &mut results))
+            .expect("draw bottom");
+        assert_eq!(results.scroll_offset, 8);
+
+        results.selected_visible = 10;
+        terminal
+            .draw(|frame| render_results_table(frame, frame.area(), &mut results))
+            .expect("draw up");
+        assert_eq!(results.scroll_offset, 8);
     }
 }

@@ -96,6 +96,7 @@ pub struct ResultsState {
     pub report: ScanReport,
     pub checked: BTreeSet<usize>,
     pub selected_visible: usize,
+    pub scroll_offset: usize,
     pub sort: SortMode,
     pub filter: FilterMode,
     pub pending_delete: Option<PendingDelete>,
@@ -298,6 +299,7 @@ impl ResultsState {
             report,
             checked: BTreeSet::new(),
             selected_visible: 0,
+            scroll_offset: 0,
             sort: SortMode::LargestFirst,
             filter: FilterMode::All,
             pending_delete: None,
@@ -380,6 +382,7 @@ impl ResultsState {
             SortMode::PathAscending => SortMode::LargestFirst,
         };
         self.selected_visible = 0;
+        self.scroll_offset = 0;
     }
 
     pub fn cycle_filter(&mut self) {
@@ -389,6 +392,7 @@ impl ResultsState {
             FilterMode::Dependencies => FilterMode::All,
         };
         self.selected_visible = 0;
+        self.scroll_offset = 0;
     }
 
     pub fn begin_delete(&mut self, strategy: DeleteStrategy) -> bool {
@@ -462,6 +466,7 @@ impl ResultsState {
 
         let visible_len = self.visible_indices().len();
         self.selected_visible = self.selected_visible.min(visible_len.saturating_sub(1));
+        self.scroll_offset = self.scroll_offset.min(visible_len.saturating_sub(1));
     }
 }
 
