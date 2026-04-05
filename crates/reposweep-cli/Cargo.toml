@@ -7,12 +7,14 @@ description = "Developer repo cleanup tool with a Ratatui interface and reusable
 
 [dependencies]
 clap.workspace = true
+clap_complete.workspace = true
 flate2.workspace = true
 indicatif.workspace = true
 miette.workspace = true
 reqwest.workspace = true
 semver.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 self-replace.workspace = true
 tar.workspace = true
 tempfile.workspace = true

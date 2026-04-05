@@ -17,7 +17,7 @@ Usage:
   powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
 
 Options:
-  --version <tag>     Install a specific release tag, for example v0.1.1
+  --version <tag>     Install a specific release tag, for example v0.1.2
   --dir <path>        Install into a custom directory
   --from-source       Build with cargo instead of downloading a release
   --help              Show this help

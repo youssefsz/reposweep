@@ -52,11 +52,11 @@ powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/you
 Install a specific version:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash -s -- --version v0.1.1
+curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash -s -- --version v0.1.2
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "$env:REPOSWEEP_VERSION='v0.1.1'; irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "$env:REPOSWEEP_VERSION='v0.1.2'; irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
 ```
 
 Build from source:
@@ -89,6 +89,12 @@ Scan a path from the CLI:
 
 ```bash
 reposweep scan ~/projects/my-app
+```
+
+Scan a path and emit JSON for scripting:
+
+```bash
+reposweep scan ~/projects/my-app --json
 ```
 
 Scan only dependency directories older than 30 days:
@@ -124,13 +130,28 @@ reposweep upgrade
 Upgrade to a specific release:
 
 ```bash
-reposweep upgrade --version v0.1.1
+reposweep upgrade --version v0.1.2
 ```
 
 Uninstall the binary from the current machine:
 
 ```bash
 reposweep uninstall
+```
+
+Inspect your installation, config paths, and platform details:
+
+```bash
+reposweep doctor
+```
+
+Generate shell completions:
+
+```bash
+reposweep completions zsh > "${fpath[1]}/_reposweep"
+reposweep completions bash > ~/.local/share/bash-completion/completions/reposweep
+reposweep completions fish > ~/.config/fish/completions/reposweep.fish
+reposweep completions powershell > reposweep.ps1
 ```
 
 ## What It Cleans
@@ -163,6 +184,14 @@ The generated config lets you disable ecosystems, add protected paths, define cu
 - `crates/reposweep-cli`: command-line entrypoint and scripting workflow
 - `crates/reposweep-tui`: interactive terminal interface built on Ratatui
 
+## CLI Features
+
+- Standard help and version flags via `reposweep --help` and `reposweep --version`
+- Machine-readable scan output with `reposweep scan --json`
+- Installation diagnostics with `reposweep doctor`
+- Shell completion generation with `reposweep completions <shell>`
+- In-place lifecycle commands with `reposweep upgrade` and `reposweep uninstall`
+
 ## Author
 
 [Youssef Dhibi](https://dhibi.tn) created RepoSweep.
@@ -175,10 +204,10 @@ RepoSweep is available under the [MIT License](./LICENSE).
 
 The install script expects GitHub Release archives named like:
 
-- `reposweep-v0.1.1-x86_64-unknown-linux-gnu.tar.gz`
-- `reposweep-v0.1.1-aarch64-unknown-linux-gnu.tar.gz`
-- `reposweep-v0.1.1-x86_64-apple-darwin.tar.gz`
-- `reposweep-v0.1.1-aarch64-apple-darwin.tar.gz`
-- `reposweep-v0.1.1-x86_64-pc-windows-msvc.zip`
+- `reposweep-v0.1.2-x86_64-unknown-linux-gnu.tar.gz`
+- `reposweep-v0.1.2-aarch64-unknown-linux-gnu.tar.gz`
+- `reposweep-v0.1.2-x86_64-apple-darwin.tar.gz`
+- `reposweep-v0.1.2-aarch64-apple-darwin.tar.gz`
+- `reposweep-v0.1.2-x86_64-pc-windows-msvc.zip`
 
 Those archives are produced automatically by the release workflow when you push a `v*` tag.
