@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting - RepoSweep</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ── Tokens ── */
+        :root {
+            --bg: #0b0f19;
+            --bg-surface: #111827;
+            --bg-raised: #1f2937;
+            --border: #1a2639;
+            --border-bold: #2e3b4e;
+
+            --accent: #3b82f6;
+            --accent-dim: #60a5fa;
+            --accent-hover: #2563eb;
+
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+
+            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* ── Base ── */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            border-radius: 0; /* Brutalist look */
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* ── Container ── */
+        .redirect-container {
+            background: var(--bg-surface);
+            border: 2px solid var(--accent);
+            padding: 48px;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+
+        .redirect-container:hover {
+            border-color: var(--accent-hover);
+        }
+
+        .logo {
+            height: 48px;
+            width: auto;
+            margin: 0 auto 32px;
+            display: block;
+        }
+
+        .blink-text {
+            font-family: var(--mono);
+            color: var(--accent);
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .cursor {
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .destination {
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 0.9rem;
+            margin-bottom: 32px;
+        }
+
+        .destination span {
+            color: var(--text);
+        }
+
+        /* ── Progress Bar ── */
+        .progress-bar-container {
+            background: var(--bg);
+            border: 1px solid var(--border-bold);
+            height: 12px;
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            transition: width 0.1s linear;
+        }
+
+        .timeout {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            margin-bottom: 32px;
+        }
+
+        .timeout span {
+            color: var(--accent-dim);
+        }
+
+        /* ── Button ── */
+        .manual-redirect {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .manual-redirect:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="redirect-container">
+        <img src="../landing-page/imgs/logo/logo.png" alt="RepoSweep logo" class="logo">
+        <h1 class="blink-text">Redirecting<span class="cursor">_</span></h1>
+        <p class="destination">Destination: <span>reposweep.youssef.tn</span></p>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <p class="timeout">Redirecting in <span id="countdown">4</span>s</p>
+
+        <a href="https://reposweep.youssef.tn" class="manual-redirect">Manual Redirect</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const targetUrl = 'https://reposweep.youssef.tn';
+            const totalTime = 4000; // 4 seconds target
+            const intervalTime = 50;
+            let elapsedTime = 0;
+
+            const progressBar = document.getElementById('progress-bar');
+            const countdownEl = document.getElementById('countdown');
+
+            const interval = setInterval(() => {
+                elapsedTime += intervalTime;
+
+                // Update progress bar width
+                const progressPercentage = Math.min((elapsedTime / totalTime) * 100, 100);
+                progressBar.style.width = `${progressPercentage}%`;
+
+                // Update countdown text
+                const remainingTime = Math.ceil((totalTime - elapsedTime) / 1000);
+                countdownEl.textContent = remainingTime > 0 ? remainingTime : 0;
+
+                if (elapsedTime >= totalTime) {
+                    clearInterval(interval);
+                    window.location.href = targetUrl;
+                }
+            }, intervalTime);
+        });
+    </script>
+</body>
+
+</html>

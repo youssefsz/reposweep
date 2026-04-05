@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation | RepoSweep</title>
+    <meta name="title" content="Documentation | RepoSweep">
+    <meta name="description" content="Official documentation for RepoSweep: Rust-native cleanup for developer repositories.">
+    <meta name="keywords" content="RepoSweep docs, guide, CLI, Rust, user manual">
+    <link rel="canonical" href="https://reposweep.youssef.tn/docs/">
+    
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="../imgs/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../imgs/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../imgs/favicons/favicon-16x16.png">
+    <link rel="manifest" href="../imgs/favicons/site.webmanifest">
+    <meta name="theme-color" content="#030712">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://reposweep.youssef.tn/docs/">
+    <meta property="og:title" content="Documentation | RepoSweep">
+    <meta property="og:description" content="Official documentation for RepoSweep: Rust-native cleanup for developer repositories.">
+    <meta property="og:image" content="https://reposweep.youssef.tn/imgs/og-img.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://reposweep.youssef.tn/docs/">
+    <meta property="twitter:title" content="Documentation | RepoSweep">
+    <meta property="twitter:description" content="Official documentation for RepoSweep: Rust-native cleanup for developer repositories.">
+    <meta property="twitter:image" content="https://reposweep.youssef.tn/imgs/og-img.png">
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="../" class="brand">
+                <img src="../imgs/logo/logo.png" alt="RepoSweep Logo" class="logo">
+            </a>
+            <nav class="nav-links">
+                <a href="https://github.com/youssefsz/reposweep" target="_blank" rel="noopener">GitHub</a>
+                <a href="./">Documentation</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="docs-main container">
+        <aside class="docs-sidebar">
+            <nav class="toc">
+                <h3>Contents</h3>
+                <ul>
+                    <li><a href="#introduction">Introduction</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#install">Installation</a></li>
+                    <li><a href="#usage">Usage</a></li>
+                    <li><a href="#what-it-cleans">What It Cleans</a></li>
+                    <li><a href="#protection-config">Protection & Config</a></li>
+                    <li><a href="#architecture">Architecture</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <section class="docs-content">
+            <h1 class="docs-title">Documentation</h1>
+
+            <h2 id="introduction">Introduction</h2>
+            <p><strong>RepoSweep</strong> is a Rust-native cleanup tool for developer repositories. It scans a chosen path for dependency folders, build outputs, and disposable caches, then lets you review and remove them through a scriptable CLI or an interactive terminal UI.</p>
+            <p>Created by <a href="https://dhibi.tn" target="_blank" rel="noopener">Youssef Dhibi</a>. Inspired by the Python project <em>shatter</em>, this is a separate Rust implementation offering a modular core crate and a powerful terminal UI.</p>
+
+            <h2 id="features">Features</h2>
+            <ul class="docs-list">
+                <li>Rust workspace split into <code>reposweep-core</code>, <code>reposweep-cli</code>, and <code>reposweep-tui</code></li>
+                <li>Interactive terminal UI for browsing scan results before deleting</li>
+                <li>Non-interactive CLI commands for scanning and cleaning</li>
+                <li>Scope filters for <code>cache</code>, <code>dependencies</code>, or <code>all</code></li>
+                <li>Accurate size calculation or faster scan mode with <code>--fast</code></li>
+                <li>Safe cleanup to trash by default, with optional permanent deletion</li>
+                <li><code>.reposweepignore</code> support to skip protected subtrees entirely</li>
+                <li>Config bootstrap with <code>reposweep config init</code></li>
+            </ul>
+
+            <h2 id="install">Installation</h2>
+            <p>You can easily install RepoSweep through curl on Linux/macOS or powershell on Windows.</p>
+            
+            <h3>Linux / macOS</h3>
+            <div class="docs-code-block">
+                <code id="doc-code-linux">curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash</code>
+                <button class="copy-btn" data-clipboard="doc-code-linux">Copy</button>
+            </div>
+
+            <h3>Windows PowerShell</h3>
+            <div class="docs-code-block">
+                <code id="doc-code-win">powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"</code>
+                <button class="copy-btn" data-clipboard="doc-code-win">Copy</button>
+            </div>
+
+            <h3>Cargo (Build from source)</h3>
+            <div class="docs-code-block">
+                <code id="doc-code-cargo">cargo install --path crates/reposweep-cli</code>
+                <button class="copy-btn" data-clipboard="doc-code-cargo">Copy</button>
+            </div>
+
+            <h3>Upgrading & Uninstalling</h3>
+            <p>Upgrade an installed binary in place or uninstall it from the current machine:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-upgrade">reposweep upgrade</code>
+                <button class="copy-btn" data-clipboard="doc-code-upgrade">Copy</button>
+            </div>
+
+            <h2 id="usage">Usage</h2>
+            <p>Launch the interactive terminal UI:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-usage1">reposweep</code>
+                <button class="copy-btn" data-clipboard="doc-code-usage1">Copy</button>
+            </div>
+            <p>Launch the interactive terminal UI with an explicit path:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-usage2">reposweep tui ~/projects</code>
+                <button class="copy-btn" data-clipboard="doc-code-usage2">Copy</button>
+            </div>
+            <p>Scan a path from the non-interactive CLI:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-usage3">reposweep scan ~/projects/my-app</code>
+                <button class="copy-btn" data-clipboard="doc-code-usage3">Copy</button>
+            </div>
+            <p>Scan a path and emit JSON for scripting:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-usage4">reposweep scan ~/projects/my-app --json</code>
+                <button class="copy-btn" data-clipboard="doc-code-usage4">Copy</button>
+            </div>
+            <p>Scan only dependency directories older than 30 days:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-usage5">reposweep scan ~/projects --scope dependencies --older-than 30d</code>
+                <button class="copy-btn" data-clipboard="doc-code-usage5">Copy</button>
+            </div>
+            <p>Clean caches non-interactively by moving them to trash:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-usage6">reposweep clean ~/projects/my-app --scope cache --strategy trash --yes</code>
+                <button class="copy-btn" data-clipboard="doc-code-usage6">Copy</button>
+            </div>
+
+            <h2 id="what-it-cleans">What It Cleans</h2>
+            <p>Built-in rules currently cover common targets such as:</p>
+            <ul class="docs-list">
+                <li><strong>JavaScript:</strong> <code>node_modules</code>, <code>.pnpm-store</code>, <code>.yarn</code>, <code>.next</code>, <code>.turbo</code>, <code>.parcel-cache</code>, <code>dist</code></li>
+                <li><strong>Python:</strong> <code>__pycache__</code>, <code>.pytest_cache</code>, <code>.mypy_cache</code>, <code>.ruff_cache</code>, <code>.venv</code>, <code>venv</code>, <code>.tox</code></li>
+                <li><strong>Rust:</strong> <code>target</code></li>
+                <li><strong>Java:</strong> <code>.gradle</code></li>
+                <li><strong>Dart/Flutter:</strong> <code>.dart_tool</code>, <code>.pub-cache</code></li>
+                <li><strong>.NET:</strong> <code>bin</code>, <code>obj</code></li>
+                <li><strong>Generic:</strong> <code>build</code>, <code>.cache</code>, <code>.idea</code></li>
+            </ul>
+
+            <h2 id="protection-config">Protection & Config</h2>
+            <p>Drop a <code>.reposweepignore</code> file into any directory you never want scanned. When present, that directory and its children are skipped.</p>
+            <p>The default config can be generated with:</p>
+            <div class="docs-code-block">
+                <code id="doc-code-config">reposweep config init</code>
+                <button class="copy-btn" data-clipboard="doc-code-config">Copy</button>
+            </div>
+
+            <h2 id="architecture">Architecture</h2>
+            <ul class="docs-list">
+                <li><code>crates/reposweep-core</code>: scanning, rules, config, deletion services</li>
+                <li><code>crates/reposweep-cli</code>: command-line entrypoint and scripting workflow</li>
+                <li><code>crates/reposweep-tui</code>: interactive terminal interface built on Ratatui</li>
+            </ul>
+
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <p>An open source project.</p>
+                <p>Created by <a href="https://dhibi.tn" target="_blank" rel="noopener">Youssef Dhibi</a>.</p>
+            </div>
+            <nav class="footer-links">
+                <a href="../privacy">Privacy</a>
+                <a href="https://github.com/youssefsz/reposweep/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+            </nav>
+        </div>
+    </footer>
+    <script src="../main.js"></script>
+</body>
+</html>

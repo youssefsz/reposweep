@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoSweep | Rust-native cleanup for developer repositories</title>
+    <meta name="title" content="RepoSweep | Rust-native cleanup for developer repositories">
+    <meta name="description" content="Clean project caches, builds, and dependencies without leaving the terminal.">
+    <meta name="keywords" content="Rust, CLI, TUI, clean cache, node_modules, target dir, uninstaller, open source">
+    <meta name="author" content="Youssef">
+    <link rel="canonical" href="https://reposweep.youssef.tn/">
+    
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="./imgs/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./imgs/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./imgs/favicons/favicon-16x16.png">
+    <link rel="manifest" href="./imgs/favicons/site.webmanifest">
+    <meta name="theme-color" content="#030712">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://reposweep.youssef.tn/">
+    <meta property="og:title" content="RepoSweep | Rust-native cleanup for developer repositories">
+    <meta property="og:description" content="Clean project caches, builds, and dependencies without leaving the terminal.">
+    <meta property="og:image" content="https://reposweep.youssef.tn/imgs/og-img.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://reposweep.youssef.tn/">
+    <meta property="twitter:title" content="RepoSweep | Rust-native cleanup for developer repositories">
+    <meta property="twitter:description" content="Clean project caches, builds, and dependencies without leaving the terminal.">
+    <meta property="twitter:image" content="https://reposweep.youssef.tn/imgs/og-img.png">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="./" class="brand">
+                <img src="imgs/logo/logo.png" alt="RepoSweep Logo" class="logo">
+            </a>
+            <nav class="nav-links">
+                <a href="https://github.com/youssefsz/reposweep" target="_blank" rel="noopener">GitHub</a>
+                <a href="./docs">Documentation</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero container">
+            <div class="hero-content">
+                <h1 class="hero-title"><span class="text-accent">Rust-native</span> cleanup for developer repositories.</h1>
+                <p class="hero-subtitle">Scan and remove dependency folders, build outputs, and disposable caches through a scriptable CLI or an <span class="text-accent">interactive terminal UI</span>.</p>
+            </div>
+
+            <!-- Install commands -->
+                <div class="install-block">
+                    <div class="install-header">
+                        <div class="install-tabs">
+                            <button class="install-tab active" data-target="cmd-unix" id="tab-unix">macOS / Linux</button>
+                            <button class="install-tab" data-target="cmd-windows" id="tab-windows">Windows</button>
+                        </div>
+                        <a href="https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh" target="_blank" rel="noopener" class="view-script-link" id="view-script-btn">View full script</a>
+                    </div>
+
+                    <div class="install-cmd" id="cmd-unix">
+                        <code id="code-unix">curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash</code>
+                        <button class="copy-btn" data-clipboard="code-unix">Copy</button>
+                    </div>
+
+                    <div class="install-cmd install-cmd-hidden" id="cmd-windows">
+                        <code id="code-windows">powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"</code>
+                        <button class="copy-btn" data-clipboard="code-windows">Copy</button>
+                    </div>
+                </div>
+
+            <div class="hero-preview">
+                <img src="imgs/preview.png" alt="RepoSweep Terminal UI Preview" class="preview-image">
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2 class="section-title">Capabilities</h2>
+                <div class="feature-grid">
+                    <article class="feature-card">
+                        <h3 class="feature-title">Interactive Terminal UI</h3>
+                        <p class="feature-desc">Browse scan results visually before deleting. The interface guides you through potential space savings across your system.</p>
+                    </article>
+                    <article class="feature-card">
+                        <h3 class="feature-title">Fast and Accurate</h3>
+                        <p class="feature-desc">Leverages Rust for high-performance directory traversal. Analyzes standard development outputs instantly.</p>
+                    </article>
+                    <article class="feature-card">
+                        <h3 class="feature-title">Programmable CLI</h3>
+                        <p class="feature-desc">Integrates easily into CI pipelines via JSON output. Script non-interactive scans and automatic cleanups.</p>
+                    </article>
+                    <article class="feature-card">
+                        <h3 class="feature-title">Safety First</h3>
+                        <p class="feature-desc">Defaults to system trash deletion with optional permanent removal. Protect essential directories with dedicated ignore files.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <p>An open source project.</p>
+                <p>Created by <a href="https://dhibi.tn" target="_blank" rel="noopener">Youssef Dhibi</a>.</p>
+            </div>
+            <nav class="footer-links">
+                <a href="./privacy">Privacy</a>
+                <a href="https://github.com/youssefsz/reposweep/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+            </nav>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>

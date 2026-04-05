@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | RepoSweep</title>
+    <meta name="title" content="Privacy Policy | RepoSweep">
+    <meta name="description" content="Privacy Policy for RepoSweep: Understanding how this local CLI tool handles your data.">
+    <link rel="canonical" href="https://reposweep.youssef.tn/privacy/">
+    
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="../imgs/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../imgs/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../imgs/favicons/favicon-16x16.png">
+    <link rel="manifest" href="../imgs/favicons/site.webmanifest">
+    <meta name="theme-color" content="#030712">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://reposweep.youssef.tn/privacy/">
+    <meta property="og:title" content="Privacy Policy | RepoSweep">
+    <meta property="og:description" content="Privacy Policy for RepoSweep: Understanding how this local CLI tool handles your data.">
+    <meta property="og:image" content="https://reposweep.youssef.tn/imgs/og-img.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://reposweep.youssef.tn/privacy/">
+    <meta property="twitter:title" content="Privacy Policy | RepoSweep">
+    <meta property="twitter:description" content="Privacy Policy for RepoSweep: Understanding how this local CLI tool handles your data.">
+    <meta property="twitter:image" content="https://reposweep.youssef.tn/imgs/og-img.png">
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="../" class="brand">
+                <img src="../imgs/logo/logo.png" alt="RepoSweep Logo" class="logo">
+            </a>
+            <nav class="nav-links">
+                <a href="https://github.com/youssefsz/reposweep" target="_blank" rel="noopener">GitHub</a>
+                <a href="../docs">Documentation</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="docs-main container">
+        <aside class="docs-sidebar">
+            <nav class="toc">
+                <h3>Privacy</h3>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#data-collection">Data Collection (Zero)</a></li>
+                    <li><a href="#file-system">File System Access</a></li>
+                    <li><a href="#network">Network Activity</a></li>
+                    <li><a href="#github-api">GitHub API</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <section class="docs-content">
+            <h1 class="docs-title">Privacy Policy</h1>
+            <p><strong>Effective Date:</strong> April 2026</p>
+
+            <h2 id="overview">Overview</h2>
+            <p><strong>RepoSweep</strong> is an open-source, Rust-native command-line interface (CLI) and terminal user interface (TUI) tool intended to clean project caches, builds, and dependencies. It is designed with a strict privacy-first architecture.</p>
+            <p>Because RepoSweep is a local utility designed by a developer for developers, this policy is overwhelmingly simple: <strong>RepoSweep does not collect, store, or sell your personal data.</strong></p>
+
+            <h2 id="data-collection">Data Collection (Zero Telemetry)</h2>
+            <p>RepoSweep is completely devoid of telemetry mechanisms, analytics trackers, or "phone-home" statistics. The codebase does not include functionality to collect metrics about your system, usage habits, or personal hardware configuration.</p>
+            <ul class="docs-list">
+                <li>No anonymous usage reporting.</li>
+                <li>No crash reporting sent to remote servers.</li>
+                <li>No user tracking mechanisms.</li>
+            </ul>
+
+            <h2 id="file-system">Local Execution & File System Access</h2>
+            <p>To function properly, RepoSweep requires localized access to your file system to discover dependencies (e.g., <code>node_modules</code>), caches (e.g., <code>.cache</code>), and build targets. It subsequently interacts with the file system to delete these directories or move them to the system Trash.</p>
+            <p><strong>This execution is strictly isolated.</strong> The names of your folders, the paths of your directories, and the size of your projects never leave your machine.</p>
+
+            <h2 id="network">Network Activity</h2>
+            <p>Under normal scanning and cleaning circumstances (using <code>reposweep scan</code> or <code>reposweep clean</code> or the TUI <code>reposweep tui</code>), RepoSweep is completely offline operations and generates absolutely zero network requests.</p>
+
+            <h2 id="github-api">GitHub API & Upgrade System</h2>
+            <p>The only exception to the offline rule is the <code>reposweep upgrade</code> command. When invoked by the user, RepoSweep performs outgoing HTTP requests directed exclusively to the official GitHub API.</p>
+            <ul class="docs-list">
+                <li><strong>Purpose:</strong> To check for the latest tagged release and download the corresponding binary artifact for your platform.</li>
+                <li><strong>Exposure:</strong> As with any standard HTTP request, GitHub will receive your IP address, a user-agent string, and basic request headers. This data is subject to <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's own Privacy Statement</a>.</li>
+                <li><strong>Voluntary:</strong> This network sequence only fires if you purposefully run the upgrade command.</li>
+            </ul>
+
+            <h2 id="contact">Contact & Open Source</h2>
+            <p>RepoSweep is created and maintained by <a href="https://dhibi.tn" target="_blank" rel="noopener">Youssef Dhibi</a> and relies entirely on transparent, verifiable open-source mechanisms. If you have any further questions or wish to inspect the privacy claims yourself, the entire source context is publicly auditable.</p>
+            <div class="docs-code-block">
+                <code id="privacy-code-1">https://github.com/youssefsz/reposweep</code>
+                <button class="copy-btn" data-clipboard="privacy-code-1">Copy</button>
+            </div>
+            <p>If you believe there is a discrepancy with this policy, please file a public issue on the GitHub repository listed above.</p>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <p>An open source project.</p>
+                <p>Created by <a href="https://dhibi.tn" target="_blank" rel="noopener">Youssef Dhibi</a>.</p>
+            </div>
+            <nav class="footer-links">
+                <a href="./">Privacy</a>
+                <a href="https://github.com/youssefsz/reposweep/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+            </nav>
+        </div>
+    </footer>
+
+    <script src="../main.js"></script>
+</body>
+</html>
