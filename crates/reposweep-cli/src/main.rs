@@ -1,3 +1,5 @@
+mod upgrade;
+
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -47,6 +49,15 @@ enum Command {
         #[arg(long)]
         yes: bool,
     },
+    /// Upgrade the installed RepoSweep binary in place.
+    Upgrade {
+        #[arg(
+            long,
+            value_name = "TAG",
+            help = "Install a specific release tag instead of the latest one"
+        )]
+        version: Option<String>,
+    },
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
@@ -94,6 +105,9 @@ fn main() -> miette::Result<()> {
             strategy,
             yes,
         } => run_clean(path, scope, older_than, fast, strategy, yes).into_diagnostic()?,
+        Command::Upgrade { version } => upgrade::run(upgrade::UpgradeOptions {
+            requested_version: version,
+        })?,
         Command::Config { command } => match command {
             ConfigCommand::Init => {
                 let service = ConfigService::new(FileConfigStore);

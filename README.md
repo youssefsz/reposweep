@@ -53,6 +53,12 @@ Build from source:
 cargo install --path crates/reposweep-cli
 ```
 
+Upgrade an installed binary in place:
+
+```bash
+reposweep upgrade
+```
+
 ## Usage
 
 Launch the terminal UI:
@@ -97,6 +103,18 @@ Initialize the default config:
 reposweep config init
 ```
 
+Upgrade to the latest published release:
+
+```bash
+reposweep upgrade
+```
+
+Upgrade to a specific release:
+
+```bash
+reposweep upgrade --version v0.1.0
+```
+
 ## What It Cleans
 
 Built-in rules currently cover common targets such as:
@@ -132,6 +150,7 @@ The generated config lets you disable ecosystems, add protected paths, define cu
 The install script expects GitHub Release archives named like:
 
 - `reposweep-v0.1.0-x86_64-unknown-linux-gnu.tar.gz`
+- `reposweep-v0.1.0-aarch64-unknown-linux-gnu.tar.gz`
 - `reposweep-v0.1.0-x86_64-apple-darwin.tar.gz`
 - `reposweep-v0.1.0-aarch64-apple-darwin.tar.gz`
 - `reposweep-v0.1.0-x86_64-pc-windows-msvc.zip`
