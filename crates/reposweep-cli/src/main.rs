@@ -1,3 +1,4 @@
+mod uninstall;
 mod upgrade;
 
 use std::path::PathBuf;
@@ -58,6 +59,11 @@ enum Command {
         )]
         version: Option<String>,
     },
+    /// Remove the installed RepoSweep binary from this machine.
+    Uninstall {
+        #[arg(long, help = "Skip the confirmation prompt")]
+        yes: bool,
+    },
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
@@ -108,6 +114,7 @@ fn main() -> miette::Result<()> {
         Command::Upgrade { version } => upgrade::run(upgrade::UpgradeOptions {
             requested_version: version,
         })?,
+        Command::Uninstall { yes } => uninstall::run(uninstall::UninstallOptions { yes })?,
         Command::Config { command } => match command {
             ConfigCommand::Init => {
                 let service = ConfigService::new(FileConfigStore);

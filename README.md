@@ -52,11 +52,11 @@ powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/you
 Install a specific version:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash -s -- --version v0.1.0
+curl -sSL https://raw.githubusercontent.com/youssefsz/reposweep/main/install.sh | bash -s -- --version v0.1.1
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "$env:REPOSWEEP_VERSION='v0.1.0'; irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "$env:REPOSWEEP_VERSION='v0.1.1'; irm https://raw.githubusercontent.com/youssefsz/reposweep/main/install.ps1 | iex"
 ```
 
 Build from source:
@@ -124,7 +124,13 @@ reposweep upgrade
 Upgrade to a specific release:
 
 ```bash
-reposweep upgrade --version v0.1.0
+reposweep upgrade --version v0.1.1
+```
+
+Uninstall the binary from the current machine:
+
+```bash
+reposweep uninstall
 ```
 
 ## What It Cleans
@@ -169,10 +175,10 @@ RepoSweep is available under the [MIT License](./LICENSE).
 
 The install script expects GitHub Release archives named like:
 
-- `reposweep-v0.1.0-x86_64-unknown-linux-gnu.tar.gz`
-- `reposweep-v0.1.0-aarch64-unknown-linux-gnu.tar.gz`
-- `reposweep-v0.1.0-x86_64-apple-darwin.tar.gz`
-- `reposweep-v0.1.0-aarch64-apple-darwin.tar.gz`
-- `reposweep-v0.1.0-x86_64-pc-windows-msvc.zip`
+- `reposweep-v0.1.1-x86_64-unknown-linux-gnu.tar.gz`
+- `reposweep-v0.1.1-aarch64-unknown-linux-gnu.tar.gz`
+- `reposweep-v0.1.1-x86_64-apple-darwin.tar.gz`
+- `reposweep-v0.1.1-aarch64-apple-darwin.tar.gz`
+- `reposweep-v0.1.1-x86_64-pc-windows-msvc.zip`
 
 Those archives are produced automatically by the release workflow when you push a `v*` tag.
